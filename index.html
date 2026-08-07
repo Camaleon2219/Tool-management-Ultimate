@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FJK CNC-Werkzeugverwaltung</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-base: #0f172a;
+      --bg-surface: #1e293b;
+      --bg-surface-alt: #334155;
+      --text-base: #f1f5f9;
+      --text-title: #ffffff;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #06b6d4;
+      --border: #334155;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-base);
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .header {
+      background: var(--bg-surface);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .brand { display: flex; align-items: center; gap: 0.75rem; }
+    .brand-icon {
+      width: 3rem; height: 3rem;
+      background: var(--primary);
+      color: white;
+      border-radius: 0.75rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+    }
+    .brand-title { font-size: 1.5rem; font-weight: 800; color: var(--text-title); }
+    .brand-subtitle { font-size: 0.875rem; color: var(--text-muted); }
+    .stats { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .stat-box {
+      background: var(--bg-surface-alt);
+      border-radius: 0.75rem;
+      padding: 0.5rem 1rem;
+      text-align: center;
+      min-width: 80px;
+    }
+    .stat-value { font-size: 1.25rem; font-weight: 700; color: var(--text-title); }
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      position: relative;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 0.75rem 1rem 0.75rem 2.5rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-base);
+      font-size: 1rem;
+      outline: none;
+    }
+    .search-box input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    .search-icon {
+      position: absolute;
+      left: 0.875rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    select, .btn {
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-base);
+      font-size: 1rem;
+      cursor: pointer;
+      outline: none;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+      border-color: var(--danger);
+      font-weight: 600;
+    }
+    .btn-secondary {
+      background: var(--bg-surface-alt);
+      color: var(--text-base);
+      font-weight: 600;
+    }
+    .btn-print {
+      background: var(--info);
+      color: white;
+      border-color: var(--info);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-print:hover { background: #0891b2; }
+    .btn-label {
+      background: #8b5cf6;
+      color: white;
+      border-color: #8b5cf6;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-label:hover { background: #7c3aed; }
+    .btn-sm {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.875rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    .card {
+      background: var(--bg-surface);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      transition: box-shadow 0.2s;
+      position: relative;
+    }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .card-icon {
+      width: 3rem; height: 3rem;
+      background: var(--bg-surface-alt);
+      border-radius: 0.75rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      cursor: default;
+      user-select: none;
+    }
+    .card-image {
+      width: 100%;
+      max-height: 140px;
+      object-fit: contain;
+      border-radius: 0.5rem;
+      margin-bottom: 0.75rem;
+      background: var(--bg-surface-alt);
+    }
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-verfuegbar, .status-neu { background: rgba(34,197,94,0.15); color: var(--success); }
+    .status-maschine { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .status-nachgeschliffen { background: rgba(6,182,212,0.15); color: var(--info); }
+    .status-verschlissen { background: rgba(239,68,68,0.15); color: var(--danger); }
+    .status-nicht-verfuegbar {
+      background: rgba(239,68,68,0.25);
+      color: var(--danger);
+      animation: blink-red 1s infinite;
+    }
+    @keyframes blink-red {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-title);
+      margin-bottom: 0.25rem;
+      line-height: 1.3;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .card-meta {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      margin-bottom: 0.75rem;
+    }
+    .tag {
+      font-size: 0.75rem;
+      padding: 0.125rem 0.5rem;
+      background: var(--bg-surface-alt);
+      border-radius: 9999px;
+      color: var(--text-muted);
+    }
+    .tag-coolant {
+      background: rgba(6,182,212,0.15);
+      color: var(--info);
+    }
+    .tag-holder {
+      background: rgba(139,92,246,0.15);
+      color: #a78bfa;
+    }
+    .card-info {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .card-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+    .card-link:hover { text-decoration: underline; }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .card-actions {
+      display: flex;
+      gap: 0.25rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .card:hover .card-actions { opacity: 1; }
+    .icon-btn {
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.15s;
+    }
+    .icon-btn:hover { background: var(--bg-surface-alt); color: var(--text-base); }
+    .icon-btn.delete:hover { background: rgba(239,68,68,0.1); color: var(--danger); }
+    .icon-btn.copy:hover { background: rgba(59,130,246,0.1); color: var(--primary); }
+    .empty {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 5rem 1rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .empty.show { display: flex; }
+    .empty-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.85);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 101;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal.active { display: flex; }
+    .modal-box {
+      position: relative;
+      background: var(--bg-surface);
+      border-radius: 1rem;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+      width: 100%;
+      max-width: 700px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.5rem;
+      z-index: 102;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-title);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.75rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0.25rem;
+    }
+    .modal-close:hover { color: var(--text-base); }
+    .form-group { margin-bottom: 1rem; }
+    .form-label {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.375rem;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      background: var(--bg-surface-alt);
+      color: var(--text-base);
+      font-size: 1rem;
+      outline: none;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+    .form-actions { display: flex; gap: 0.75rem; padding-top: 0.5rem; flex-wrap: wrap; }
+    .form-actions .btn { flex: 1; min-width: 120px; }
+    .icon-preview {
+      width: 3rem; height: 3rem;
+      background: var(--bg-surface-alt);
+      border-radius: 0.75rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      border: 1px solid var(--border);
+    }
+    .image-upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .image-upload-area:hover {
+      border-color: var(--primary);
+    }
+    .image-upload-area.has-image {
+      border-style: solid;
+      border-color: var(--primary);
+    }
+    .image-preview {
+      max-width: 100%;
+      max-height: 150px;
+      border-radius: 0.5rem;
+      object-fit: contain;
+    }
+    .image-placeholder {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+    .file-input {
+      display: none;
+    }
+    .delete-modal { max-width: 380px; text-align: center; }
+    .delete-icon {
+      width: 4rem; height: 4rem;
+      margin: 0 auto 1rem;
+      border-radius: 50%;
+      background: rgba(239,68,68,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.75rem;
+    }
+    .sync-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.4rem 0.75rem;
+      border-radius: 0.5rem;
+      background: var(--bg-surface-alt);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sync-status:hover { background: #475569; }
+    .sync-status.online { color: var(--success); border-color: rgba(34,197,94,0.3); }
+    .sync-status.offline { color: var(--text-muted); border-color: var(--border); }
+    .sync-status.error { color: var(--danger); border-color: rgba(239,68,68,0.3); }
+    .sync-status.syncing { color: var(--warning); border-color: rgba(245,158,11,0.3); }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .sync-status.online .sync-dot { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .sync-status.offline .sync-dot { background: var(--text-muted); }
+    .sync-status.error .sync-dot { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .sync-status.syncing .sync-dot { background: var(--warning); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .server-config { background: var(--bg-surface-alt); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; }
+    .server-config h4 { margin-bottom: 0.5rem; color: var(--text-title); }
+    .server-config p { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.4; }
+    .server-config code { background: rgba(0,0,0,0.3); padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.8rem; }
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--bg-surface);
+      color: var(--text-base);
+      padding: 1rem 1.25rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      border-left: 4px solid var(--primary);
+      z-index: 200;
+      transform: translateX(150%);
+      transition: transform 0.3s ease;
+      max-width: 320px;
+    }
+    .toast.show { transform: translateX(0); }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.warning { border-left-color: var(--warning); }
+
+    /* LOGIN STYLES */
+    .login-overlay {
+      position: fixed; inset: 0; background: var(--bg-base); z-index: 300;
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .login-box {
+      background: var(--bg-surface); border-radius: 1rem; padding: 2rem;
+      width: 100%; max-width: 360px; text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    }
+    .login-box .brand-icon { margin: 0 auto 1rem; width: 4rem; height: 4rem; font-size: 2rem; }
+    .login-box h2 { font-size: 1.25rem; color: var(--text-title); margin-bottom: 0.25rem; }
+    .login-box p { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+    .login-error { color: var(--danger); font-size: 0.875rem; margin-top: 0.75rem; display: none; }
+
+    @media (max-width: 768px) {
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+      .stats { width: 100%; justify-content: space-between; }
+      .header-inner { flex-direction: column; align-items: flex-start; }
+      .grid { grid-template-columns: 1fr; }
+      .card-actions { opacity: 1; }
+      .toolbar { gap: 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN OVERLAY -->
+  <div class="login-overlay" id="login-overlay">
+    <div class="login-box">
+      <div class="brand-icon">🔒</div>
+      <h2>FJK CNC-Werkzeugverwaltung</h2>
+      <p>Zugangskontrolle – Bitte Passwort eingeben</p>
+      <input type="password" id="login-password" placeholder="Passwort" class="form-input" style="margin-bottom:1rem;">
+      <button type="button" class="btn btn-primary" id="btn-login" style="width:100%;">Anmelden</button>
+      <div class="login-error" id="login-error">❌ Falsches Passwort</div>
+    </div>
+  </div>
+
+  <div class="container">
+    <header class="header">
+      <div class="header-inner">
+        <div class="brand">
+          <div class="brand">
+  <img src="https://www.klotz-cnc.de/wp-content/uploads/Logo.png" alt="Logo" style="height:3rem; width:auto; border-radius:0.5rem;">
+  <div>
+          <div>
+            <div class="brand-title">CNC-WERKZEUGVERWALTUNG</div>
+            <div class="brand-subtitle">Bohrer · Fräser · Gewindebohrer · Reibahlen · Senker</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+          <div class="stats">
+            <div class="stat-box"><div class="stat-value" id="total-count">0</div><div class="stat-label">Gesamt</div></div>
+            <div class="stat-box"><div class="stat-value" id="available-count">0</div><div class="stat-label">Verfügbar</div></div>
+            <div class="stat-box"><div class="stat-value" id="in-use-count">0</div><div class="stat-label">In Maschine</div></div>
+            <div class="stat-box"><div class="stat-value" id="worn-count">0</div><div class="stat-label">Verschlissen</div></div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-logout" style="display:none;">🔓 Abmelden</button>
+        </div>
+      </div>
+    </header>
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Werkzeug suchen (z.B. Ø6 HSS-E)...">
+      </div>
+      <select id="filter-status">
+        <option value="all">Alle Status</option>
+        <option value="verfügbar">Verfügbar</option>
+        <option value="in Maschine">In Maschine</option>
+        <option value="verschlissen">Verschlissen</option>
+        <option value="nachgeschliffen">Nachgeschliffen</option>
+        <option value="neu">Neu</option>
+        <option value="nicht verfügbar">Nicht verfügbar</option>
+      </select>
+      <select id="filter-category">
+        <option value="all">Alle Typen</option>
+        <option value="Bohrer">Bohrer</option>
+        <option value="VHM-Bohrer">VHM-Bohrer</option>
+        <option value="Fräser">Fräser</option>
+        <option value="VHM-Fräser">VHM-Fräser</option>
+        <option value="Gewindebohrer">Gewindebohrer</option>
+        <option value="Senker">Senker</option>
+        <option value="Reibahle">Reibahle</option>
+        <option value="Gewindefräser">Gewindefräser</option>
+        <option value="T-Nutenfräser">T-Nutenfräser</option>
+        <option value="Einstechfräser">Einstechfräser</option>
+        <option value="Sonstiges">Sonstiges</option>
+        <option value="Platten">Platten</option>
+      </select>
+      <button type="button" class="btn btn-primary" id="btn-add"><span>+</span> Neues Werkzeug</button>
+      <button type="button" class="sync-status offline" id="btn-sync" title="Server-Synchronisation einrichten">
+        <span class="sync-dot"></span>
+        <span id="sync-text">Offline</span>
+      </button>
+    </div>
+    <div class="grid" id="tools-grid"></div>
+    <div class="empty" id="empty-state">
+      <div class="empty-icon">⚙️</div>
+      <h3 style="font-size:1.25rem; font-weight:600; color:var(--text-title); margin-bottom:0.5rem;">Keine Werkzeuge gefunden</h3>
+      <p>Füge dein erstes CNC-Werkzeug hinzu oder passe die Filter an.</p>
+    </div>
+
+    <!-- Werkzeug Modal -->
+    <div class="modal" id="modal">
+      <div class="modal-backdrop" id="modal-backdrop"></div>
+      <div class="modal-box">
+        <div class="modal-header">
+          <h2 class="modal-title" id="modal-title">Neues CNC-Werkzeug</h2>
+          <button type="button" class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <form id="tool-form">
+          <input type="hidden" id="tool-id">
+          <div class="form-group">
+            <label class="form-label">Bezeichnung / Typ *</label>
+            <input type="text" id="tool-name" required placeholder="z.B. VHM-Bohrer Ø6 mm lang" class="form-input">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Werkzeugtyp *</label>
+              <select id="tool-category" required class="form-select">
+                <option value="Bohrer">Bohrer</option>
+                <option value="VHM-Bohrer">VHM-Bohrer</option>
+                <option value="Fräser">Fräser</option>
+                <option value="VHM-Fräser">VHM-Fräser</option>
+                <option value="Gewindebohrer">Gewindebohrer</option>
+                <option value="Senker">Senker</option>
+                <option value="Reibahle">Reibahle</option>
+                <option value="Gewindefräser">Gewindefräser</option>
+                <option value="T-Nutenfräser">T-Nutenfräser</option>
+                <option value="Einstechfräser">Einstechfräser</option>
+                <option value="Sonstiges">Sonstiges</option>
+                <option value="Platten">Platten</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status *</label>
+              <select id="tool-status" required class="form-select">
+                <option value="neu">Neu</option>
+                <option value="verfügbar">Verfügbar</option>
+                <option value="in Maschine">In Maschine</option>
+                <option value="nachgeschliffen">Nachgeschliffen</option>
+                <option value="verschlissen">Verschlissen</option>
+                <option value="nicht verfügbar">Nicht verfügbar</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Icon (Emoji)</label>
+              <input type="text" id="tool-icon" maxlength="2" placeholder="z.B. 🔩 🌀 🔧" class="form-input">
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end;">
+              <div class="icon-preview" id="icon-preview">⚙️</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Werkzeug-Bild</label>
+            <div class="image-upload-area" id="image-upload-area">
+              <input type="file" id="tool-image" class="file-input" accept="image/*">
+              <div id="image-preview-container">
+                <div class="image-placeholder">📷 Bild hierher ziehen oder klicken zum Auswählen</div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-remove-image" style="margin-top:0.5rem; display:none;">🗑️ Bild entfernen</button>
+            <div class="form-group" style="margin-top:0.75rem;">
+              <label class="form-label">Oder Bild-URL (externer Link)</label>
+              <input type="url" id="tool-image-url" placeholder="https://i.postimg.cc/..." class="form-input">
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">
+                Tipp: Bild bei <a href="https://postimg.cc" target="_blank" style="color:var(--primary);">postimg.cc</a> hochladen und Direktlink einfügen.
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Link (Hersteller / Datenblatt)</label>
+            <input type="url" id="tool-link" placeholder="https://..." class="form-input">
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label">Ø Durchmesser (mm)</label>
+              <input type="number" id="tool-diameter" step="0.01" placeholder="6.00" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Schaft Ø (mm)</label>
+              <input type="number" id="tool-shank" step="0.1" placeholder="6.0" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Gesamtlänge (mm)</label>
+              <input type="number" id="tool-length" step="0.1" placeholder="57.0" class="form-input">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Schneidenzahl</label>
+              <input type="number" id="tool-flutes" placeholder="z.B. 2" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Beschichtung</label>
+              <input type="text" id="tool-coating" placeholder="z.B. TiAlN, AlCrN" class="form-input">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Werkstoff / Härte</label>
+              <input type="text" id="tool-material" placeholder="z.B. HSS-E, VHM" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hersteller</label>
+              <input type="text" id="tool-manufacturer" placeholder="z.B. Guhring, Sandvik" class="form-input">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Artikelnummer</label>
+              <input type="text" id="tool-sku" placeholder="Hersteller-Artikelnr." class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Magazin-Platz / T-Nummer</label>
+              <input type="text" id="tool-magazine" placeholder="z.B. T12" class="form-input">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Werkzeughalter</label>
+              <input type="text" id="tool-holder" placeholder="z.B. HSK-A63, SK40, BT30" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Z-Länge (mm)</label>
+              <input type="number" id="tool-zlength" step="0.01" placeholder="z.B. 150.00" class="form-input">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Kühlung *</label>
+              <select id="tool-coolant" required class="form-select">
+                <option value="Innenkühlung">Innenkühlung</option>
+                <option value="Außenkühlung">Außenkühlung</option>
+                <option value="Innen- & Außenkühlung">Innen- & Außenkühlung</option>
+                <option value="Trocken">Trocken</option>
+                <option value="Minimalmengenschmierung">Minimalmengenschmierung (MMS)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Aktuelle Maschine / Auftrag</label>
+              <input type="text" id="tool-machine" placeholder="z.B. DMG DMU 60" class="form-input">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lagerort / Schublade</label>
+            <input type="text" id="tool-location" placeholder="z.B. Schublade B3" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notizen / Schnittdaten</label>
+            <textarea id="tool-notes" rows="3" placeholder="vc=120 m/min, fz=0.08 mm..." class="form-textarea"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Speichern</button>
+            <button type="button" class="btn btn-secondary" id="btn-cancel">Abbrechen</button>
+            <button type="button" class="btn btn-print" id="btn-print" style="display:none;">🖨️ Datenblatt</button>
+            <button type="button" class="btn btn-label" id="btn-print-label" style="display:none;">🏷️ Etikett</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div class="modal" id="delete-modal">
+      <div class="modal-backdrop" id="delete-backdrop"></div>
+      <div class="modal-box delete-modal">
+        <div class="delete-icon">🗑️</div>
+        <h3 style="font-size:1.125rem; font-weight:700; color:var(--text-title); margin-bottom:0.5rem;">Werkzeug löschen?</h3>
+        <p style="color:var(--text-muted); margin-bottom:1.5rem;">Dieses CNC-Werkzeug wird unwiderruflich gelöscht. Möchtest du fortfahren?</p>
+        <div class="form-actions">
+          <button type="button" class="btn btn-danger" id="btn-confirm-delete">Löschen</button>
+          <button type="button" class="btn btn-secondary" id="btn-cancel-delete">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Server Config Modal -->
+    <div class="modal" id="server-modal">
+      <div class="modal-backdrop" id="server-backdrop"></div>
+      <div class="modal-box" style="max-width: 500px;">
+        <div class="modal-header">
+          <h2 class="modal-title">🌐 Server-Synchronisation</h2>
+          <button type="button" class="modal-close" id="server-modal-close">&times;</button>
+        </div>
+        <div class="server-config">
+          <h4>JSONBin.io einrichten</h4>
+          <p>Deine Daten werden in der Cloud bei <strong>JSONBin.io</strong> gespeichert. So sind sie auf allen Geräten verfügbar und dauerhaft gesichert.</p>
+          <p>1. Kostenlos registrieren auf <a href="https://jsonbin.io" target="_blank" style="color:var(--primary)">jsonbin.io</a><br>2. Einen <code>X-Master-Key</code> erstellen<br>3. Optional: Eine bestehende <code>Bin-ID</code> eintragen</p>
+        </div>
+        <form id="server-form">
+          <div class="form-group">
+            <label class="form-label">X-Master-Key *</label>
+            <input type="text" id="server-key" required placeholder="$2b$10$..." class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bin-ID (optional – leer lassen für neuen Bin)</label>
+            <input type="text" id="server-bin" placeholder="66f..." class="form-input">
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">Wenn leer, wird automatisch ein neuer Bin erstellt.</p>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Verbinden & Synchronisieren</button>
+            <button type="button" class="btn btn-secondary" id="btn-server-cancel">Abbrechen</button>
+          </div>
+          <div class="form-actions" style="margin-top:0.5rem;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-create-bin" style="flex:1; min-width:auto;">➕ Neuen Bin erstellen</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-disconnect" style="flex:1; min-width:auto; display:none;">🔌 Trennen</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+
+    /* ========== LOGIN ========== */
+    const APP_PASSWORD = 'cnc2024';   // <-- HIER DEIN PASSWORT EINTRAGEN
+
+    function checkLogin() {
+      const overlay = document.getElementById('login-overlay');
+      const logoutBtn = document.getElementById('btn-logout');
+      if (localStorage.getItem('fjk_cnc_login') === 'authenticated') {
+        overlay.style.display = 'none';
+        if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+      } else {
+        overlay.style.display = 'flex';
+        if (logoutBtn) logoutBtn.style.display = 'none';
+      }
+    }
+
+    document.getElementById('btn-login').addEventListener('click', function() {
+      if (document.getElementById('login-password').value === APP_PASSWORD) {
+        localStorage.setItem('fjk_cnc_login', 'authenticated');
+        document.getElementById('login-error').style.display = 'none';
+        checkLogin();
+      } else {
+        document.getElementById('login-error').style.display = 'block';
+      }
+    });
+
+    document.getElementById('login-password').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') document.getElementById('btn-login').click();
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', function() {
+      localStorage.removeItem('fjk_cnc_login');
+      location.reload();
+    });
+
+    checkLogin();
+
+    /* ========== APP ========== */
+    const demoTools = [
+      { id: '1', name: 'VHM-Bohrer Ø6,0 mm lang', category: 'VHM-Bohrer', status: 'verfügbar', icon: '🔩', image: '', link: '', diameter: '6.00', shank: '6.0', length: '57.0', flutes: '2', coating: 'TiAlN', material: 'VHM', manufacturer: 'Guhring', sku: '5511-6.000', magazine: 'T12', holder: 'HSK-A63', zLength: '142.50', coolant: 'Innenkühlung', machine: '', location: 'Schublade A1', notes: 'vc=120 m/min, fz=0.08 mm, für Stahl 1.4301' },
+    ];
+
+    let tools = [];
+    let deleteId = null;
+    let currentEditId = null;
+    let currentImageBase64 = '';
+    let serverConfig = { key: '', binId: '' };
+    let isSyncing = false;
+
+    const statusClasses = {
+      'neu': 'status-neu',
+      'verfügbar': 'status-verfuegbar',
+      'in Maschine': 'status-maschine',
+      'nachgeschliffen': 'status-nachgeschliffen',
+      'verschlissen': 'status-verschlissen',
+      'nicht verfügbar': 'status-nicht-verfuegbar'
+    };
+
+    // ==================== SERVER / SYNC ====================
+    function loadServerConfig() {
+      try {
+        const stored = localStorage.getItem('fjk_cnc_server');
+        if (stored) serverConfig = JSON.parse(stored);
+      } catch(e) {}
+      updateSyncButton();
+    }
+    function saveServerConfig() {
+      try { localStorage.setItem('fjk_cnc_server', JSON.stringify(serverConfig)); } catch(e) {}
+      updateSyncButton();
+    }
+    function updateSyncButton() {
+      const btn = document.getElementById('btn-sync');
+      const text = document.getElementById('sync-text');
+      if (isSyncing) {
+        btn.className = 'sync-status syncing';
+        text.textContent = 'Sync...';
+      } else if (serverConfig.key && serverConfig.binId) {
+        btn.className = 'sync-status online';
+        text.textContent = 'Online';
+      } else if (serverConfig.key && !serverConfig.binId) {
+        btn.className = 'sync-status error';
+        text.textContent = 'Kein Bin';
+      } else {
+        btn.className = 'sync-status offline';
+        text.textContent = 'Offline';
+      }
+    }
+    function showToast(msg, type) {
+      type = type || 'info';
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = 'toast ' + type;
+      toast.classList.add('show');
+      setTimeout(function() { toast.classList.remove('show'); }, 3500);
+    }
+
+    async function syncToServer() {
+      if (!serverConfig.key || !serverConfig.binId) return;
+      isSyncing = true; updateSyncButton();
+      try {
+        const res = await fetch('https://api.jsonbin.io/v3/b/' + serverConfig.binId, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': serverConfig.key,
+            'X-Bin-Versioning': 'false'
+          },
+          body: JSON.stringify({ tools: tools, updatedAt: new Date().toISOString() })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        showToast('✅ Auf Server gespeichert', 'success');
+      } catch(err) {
+        console.error('Sync error:', err);
+        showToast('❌ Server-Fehler: ' + err.message, 'error');
+      } finally {
+        isSyncing = false; updateSyncButton();
+      }
+    }
+
+    async function syncFromServer() {
+      if (!serverConfig.key || !serverConfig.binId) return;
+      isSyncing = true; updateSyncButton();
+      try {
+        const res = await fetch('https://api.jsonbin.io/v3/b/' + serverConfig.binId + '/latest', {
+          headers: { 'X-Master-Key': serverConfig.key }
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (data.record && Array.isArray(data.record.tools)) {
+          tools = data.record.tools;
+          saveToolsLocal();
+          renderStats(); renderGrid();
+          showToast('✅ Vom Server geladen', 'success');
+        } else {
+          showToast('⚠️ Keine Daten auf dem Server gefunden', 'warning');
+        }
+      } catch(err) {
+        console.error('Load error:', err);
+        showToast('❌ Laden fehlgeschlagen: ' + err.message, 'error');
+      } finally {
+        isSyncing = false; updateSyncButton();
+      }
+    }
+
+    async function createNewBin() {
+      if (!serverConfig.key) { showToast('Bitte zuerst X-Master-Key eingeben', 'warning'); return; }
+      isSyncing = true; updateSyncButton();
+      try {
+        const res = await fetch('https://api.jsonbin.io/v3/b', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': serverConfig.key,
+            'X-Bin-Private': 'false',
+            'X-Bin-Versioning': 'false'
+          },
+          body: JSON.stringify({ tools: tools, updatedAt: new Date().toISOString() })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        serverConfig.binId = data.metadata.id;
+        saveServerConfig();
+        document.getElementById('server-bin').value = serverConfig.binId;
+        showToast('✅ Neuer Bin erstellt: ' + serverConfig.binId, 'success');
+        updateDisconnectButton();
+      } catch(err) {
+        showToast('❌ Bin erstellen fehlgeschlagen: ' + err.message, 'error');
+      } finally {
+        isSyncing = false; updateSyncButton();
+      }
+    }
+
+    function updateDisconnectButton() {
+      const btn = document.getElementById('btn-disconnect');
+      btn.style.display = (serverConfig.key || serverConfig.binId) ? 'inline-flex' : 'none';
+    }
+
+    // ==================== LOCAL STORAGE ====================
+    function loadTools() {
+      try {
+        const stored = localStorage.getItem('fjk_cnc_tools_v5');
+        if (stored) {
+          tools = JSON.parse(stored);
+        } else {
+          const v4Stored = localStorage.getItem('fjk_cnc_tools_v4');
+          if (v4Stored) {
+            tools = JSON.parse(v4Stored);
+            saveToolsLocal();
+          } else {
+            tools = demoTools.slice();
+            saveToolsLocal();
+          }
+        }
+      } catch(e) { tools = demoTools.slice(); }
+    }
+    function saveToolsLocal() {
+      try { localStorage.setItem('fjk_cnc_tools_v5', JSON.stringify(tools)); } catch(e) {}
+    }
+    async function saveTools() {
+      saveToolsLocal();
+      await syncToServer();
+    }
+
+    function defaultIconForCategory(cat) {
+      const map = {
+        'Bohrer': '🔩', 'VHM-Bohrer': '🔩', 'Fräser': '🌀', 'VHM-Fräser': '🌀',
+        'Gewindebohrer': '🔧', 'Senker': '🔺', 'Reibahle': '📐',
+        'Gewindefräser': '🔧', 'T-Nutenfräser': '⊏', 'Einstechfräser': '▬', 'Sonstiges': '⚙️', 'Platten': '⚙️'
+      };
+      return map[cat] || '⚙️';
+    }
+
+    function renderStats() {
+      document.getElementById('total-count').textContent = tools.length;
+      document.getElementById('available-count').textContent = tools.filter(function(t) { return t.status === 'verfügbar' || t.status === 'neu'; }).length;
+      document.getElementById('in-use-count').textContent = tools.filter(function(t) { return t.status === 'in Maschine'; }).length;
+      document.getElementById('worn-count').textContent = tools.filter(function(t) { return t.status === 'verschlissen' || t.status === 'nicht verfügbar'; }).length;
+    }
+
+    function getFiltered() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const status = document.getElementById('filter-status').value;
+      const category = document.getElementById('filter-category').value;
+      return tools.filter(function(t) {
+        const s = !search || [t.name, t.diameter, t.manufacturer, t.sku, t.magazine, t.location, t.machine, t.coolant, t.holder, t.zLength].some(function(v) { return (v || '').toLowerCase().includes(search); });
+        return s && (status === 'all' || t.status === status) && (category === 'all' || t.category === category);
+      }).sort(function(a, b) { return a.name.localeCompare(b.name); });
+    }
+
+    function esc(t) {
+      if (!t) return '—';
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('tools-grid');
+      const empty = document.getElementById('empty-state');
+      const filtered = getFiltered();
+      if (!filtered.length) { grid.innerHTML = ''; empty.classList.add('show'); return; }
+      empty.classList.remove('show');
+      grid.innerHTML = filtered.map(function(tool) {
+        const icon = tool.icon || defaultIconForCategory(tool.category);
+        const stClass = statusClasses[tool.status] || '';
+        const imageHtml = tool.imageUrl
+          ? '<img src="' + esc(tool.imageUrl) + '" class="card-image" alt="Werkzeugbild" onerror="this.style.display=\'none\'">'
+          : (tool.image ? '<img src="' + tool.image + '" class="card-image" alt="Werkzeugbild">' : '');
+        const linkHtml = tool.link ? '<a href="' + esc(tool.link) + '" target="_blank" class="card-link">🔗 Hersteller-Link</a>' : '';
+        return `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon">${icon}</div>
+            <span class="status-badge ${stClass}">${tool.status}</span>
+          </div>
+          ${imageHtml}
+          <div class="card-title" title="${esc(tool.name)}">${esc(tool.name)}</div>
+          <div class="card-meta">
+            ${tool.diameter ? '<b>Ø' + tool.diameter + ' mm</b>' : ''}
+            ${tool.length ? ' · ' + tool.length + ' mm' : ''}
+            ${tool.flutes ? ' · ' + tool.flutes + ' Schneiden' : ''}
+          </div>
+          <div class="tags">
+            ${tool.coating && tool.coating !== '—' ? '<span class="tag">' + esc(tool.coating) + '</span>' : ''}
+            ${tool.material ? '<span class="tag">' + esc(tool.material) + '</span>' : ''}
+            ${tool.coolant ? '<span class="tag tag-coolant">💧 ' + esc(tool.coolant) + '</span>' : ''}
+            ${tool.holder ? '<span class="tag tag-holder">🔌 ' + esc(tool.holder) + '</span>' : ''}
+          </div>
+          <div class="card-info">
+            ${tool.magazine ? '🧲 ' + esc(tool.magazine) + '<br>' : ''}
+            ${tool.zLength ? '📏 Z: ' + esc(tool.zLength) + ' mm<br>' : ''}
+            📍 ${esc(tool.location || '—')}<br>
+            ${tool.machine ? '🏭 ' + esc(tool.machine) + '<br>' : ''}
+            ${linkHtml}
+          </div>
+          <div class="card-footer">
+            <span style="font-size:0.75rem; color:var(--text-muted);">${esc(tool.manufacturer || '—')}</span>
+            <div class="card-actions">
+              <button type="button" class="icon-btn" data-action="edit" data-id="${tool.id}" title="Bearbeiten">✏️</button>
+              <button type="button" class="icon-btn copy" data-action="copy" data-id="${tool.id}" title="Kopieren">📋</button>
+              <button type="button" class="icon-btn delete" data-action="delete" data-id="${tool.id}" title="Löschen">🗑️</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ==================== COPY TOOL ====================
+    function copyTool(id) {
+      const original = tools.find(function(t) { return t.id === id; });
+      if (!original) return;
+      const clone = JSON.parse(JSON.stringify(original));
+      clone.id = Date.now().toString(36) + Math.random().toString(36).substr(2);
+      clone.name = clone.name + ' (Kopie)';
+      clone.status = 'neu';
+      clone.magazine = '';
+      clone.machine = '';
+      clone.location = '';
+      tools.push(clone);
+      saveToolsLocal();
+      renderStats();
+      renderGrid();
+      showToast('✅ Werkzeug kopiert: ' + clone.name, 'success');
+    }
+
+    // ==================== IMAGE UPLOAD ====================
+    const imageUploadArea = document.getElementById('image-upload-area');
+    const imageInput = document.getElementById('tool-image');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+    const btnRemoveImage = document.getElementById('btn-remove-image');
+
+    function showImagePreview(base64) {
+      currentImageBase64 = base64;
+      if (base64) {
+        imagePreviewContainer.innerHTML = '<img src="' + base64 + '" class="image-preview" alt="Vorschau">';
+        imageUploadArea.classList.add('has-image');
+        btnRemoveImage.style.display = 'inline-block';
+      } else {
+        imagePreviewContainer.innerHTML = '<div class="image-placeholder">📷 Bild hierher ziehen oder klicken zum Auswählen</div>';
+        imageUploadArea.classList.remove('has-image');
+        btnRemoveImage.style.display = 'none';
+      }
+    }
+
+    imageUploadArea.addEventListener('click', function() { imageInput.click(); });
+    imageUploadArea.addEventListener('dragover', function(e) { e.preventDefault(); imageUploadArea.style.borderColor = 'var(--primary)'; });
+    imageUploadArea.addEventListener('dragleave', function(e) { e.preventDefault(); imageUploadArea.style.borderColor = ''; });
+    imageUploadArea.addEventListener('drop', function(e) {
+      e.preventDefault(); imageUploadArea.style.borderColor = '';
+      if (e.dataTransfer.files.length > 0) handleImageFile(e.dataTransfer.files[0]);
+    });
+    imageInput.addEventListener('change', function(e) { if (e.target.files.length > 0) handleImageFile(e.target.files[0]); });
+
+    function handleImageFile(file) {
+      if (!file.type.startsWith('image/')) { alert('Bitte nur Bilddateien hochladen (JPG, PNG, GIF, etc.)'); return; }
+      if (file.size > 2 * 1024 * 1024) { alert('Das Bild ist zu groß. Maximal 2 MB erlaubt.'); return; }
+      const reader = new FileReader();
+      reader.onload = function(e) { showImagePreview(e.target.result); };
+      reader.readAsDataURL(file);
+    }
+
+    btnRemoveImage.addEventListener('click', function(e) { e.stopPropagation(); showImagePreview(''); imageInput.value = ''; });
+
+    // ==================== MODALS ====================
+    function openModal(data) {
+      const modal = document.getElementById('modal');
+      const form = document.getElementById('tool-form');
+      const printBtn = document.getElementById('btn-print');
+      const labelBtn = document.getElementById('btn-print-label');
+      form.reset(); imageInput.value = '';
+      if (data) {
+        currentEditId = data.id;
+        document.getElementById('modal-title').textContent = 'CNC-Werkzeug bearbeiten';
+        document.getElementById('tool-id').value = data.id;
+        document.getElementById('tool-name').value = data.name;
+        document.getElementById('tool-category').value = data.category;
+        document.getElementById('tool-status').value = data.status;
+        document.getElementById('tool-icon').value = data.icon || defaultIconForCategory(data.category);
+        document.getElementById('tool-link').value = data.link || '';
+        document.getElementById('tool-diameter').value = data.diameter;
+        document.getElementById('tool-shank').value = data.shank;
+        document.getElementById('tool-length').value = data.length;
+        document.getElementById('tool-flutes').value = data.flutes;
+        document.getElementById('tool-coating').value = data.coating;
+        document.getElementById('tool-material').value = data.material;
+        document.getElementById('tool-manufacturer').value = data.manufacturer;
+        document.getElementById('tool-sku').value = data.sku;
+        document.getElementById('tool-magazine').value = data.magazine;
+        document.getElementById('tool-holder').value = data.holder || '';
+        document.getElementById('tool-zlength').value = data.zLength || '';
+        document.getElementById('tool-coolant').value = data.coolant || 'Innenkühlung';
+        document.getElementById('tool-machine').value = data.machine;
+        document.getElementById('tool-location').value = data.location;
+        document.getElementById('tool-notes').value = data.notes;
+        showImagePreview(data.image || '');
+        document.getElementById('tool-image-url').value = data.imageUrl || '';
+        printBtn.style.display = 'inline-flex';
+        labelBtn.style.display = 'inline-flex';
+      } else {
+        currentEditId = null;
+        document.getElementById('modal-title').textContent = 'Neues CNC-Werkzeug';
+        document.getElementById('tool-id').value = '';
+        document.getElementById('tool-icon').value = '⚙️';
+        document.getElementById('tool-coolant').value = 'Innenkühlung';
+        showImagePreview('');
+        printBtn.style.display = 'none';
+        labelBtn.style.display = 'none';
+      }
+      updateIconPreview();
+      modal.classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+      currentEditId = null; currentImageBase64 = '';
+    }
+    function openDeleteModal() { document.getElementById('delete-modal').classList.add('active'); }
+    function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('active'); deleteId = null; }
+    function openServerModal() {
+      document.getElementById('server-key').value = serverConfig.key || '';
+      document.getElementById('server-bin').value = serverConfig.binId || '';
+      updateDisconnectButton();
+      document.getElementById('server-modal').classList.add('active');
+    }
+    function closeServerModal() { document.getElementById('server-modal').classList.remove('active'); }
+
+    function updateIconPreview() {
+      const val = document.getElementById('tool-icon').value;
+      document.getElementById('icon-preview').textContent = val || '⚙️';
+    }
+    function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+
+    // ==================== PRINT ====================
+    function printDataSheet() {
+      if (!currentEditId) return;
+      const tool = tools.find(function(t) { return t.id === currentEditId; });
+      if (!tool) return;
+      const icon = tool.icon || defaultIconForCategory(tool.category);
+      const now = new Date().toLocaleDateString('de-DE');
+      const imageHtml = tool.image ? '<div style="text-align:center; margin-bottom:1.5rem;"><img src="' + tool.image + '" style="max-height:180px; max-width:100%; border-radius:0.5rem;"></div>' : '';
+      const printHtml = '<html><head><title>Werkzeugdatenblatt</title>' +
+        '<style>' +
+          'body { font-family: Arial, sans-serif; margin: 0; padding: 2rem; color: #1e293b; }' +
+          '.header { text-align: center; border-bottom: 3px solid #3b82f6; padding-bottom: 1rem; margin-bottom: 2rem; }' +
+          'h1 { font-size: 2rem; margin: 0; }' +
+          'p.sub { color: #64748b; margin: 0.5rem 0 0 0; }' +
+          '.meta { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; padding: 1.5rem; background: #f8fafc; border-radius: 1rem; }' +
+          '.meta-icon { font-size: 4rem; }' +
+          '.meta h2 { font-size: 1.75rem; margin: 0; }' +
+          '.meta p { color: #64748b; margin: 0.25rem 0 0 0; font-size: 1.1rem; }' +
+          'table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }' +
+          'td { padding: 0.75rem 1rem; border: 1px solid #cbd5e1; }' +
+          'td:first-child { font-weight: 600; width: 40%; background: #f1f5f9; }' +
+          'tr:nth-child(even) td:first-child { background: #e2e8f0; }' +
+          '.notes { background: #f8fafc; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #3b82f6; }' +
+          '.notes h3 { margin: 0 0 0.5rem 0; font-size: 1rem; }' +
+          '.notes p { margin: 0; color: #475569; white-space: pre-wrap; }' +
+          '.footer { margin-top: 3rem; text-align: center; color: #94a3b8; font-size: 0.875rem; border-top: 1px solid #e2e8f0; padding-top: 1rem; }' +
+        '</style></head><body>' +
+        '<div class="header"><h1>FJK CNC-Werkzeugverwaltung</h1><p class="sub">Werkzeugdatenblatt · Ausgedruckt am ' + now + '</p></div>' +
+        imageHtml +
+        '<div class="meta"><div class="meta-icon">' + icon + '</div><div><h2>' + tool.name + '</h2><p>' + tool.category + ' · ' + tool.status + '</p></div></div>' +
+        '<table>' +
+          '<tr><td>Hersteller</td><td>' + (tool.manufacturer || '—') + '</td></tr>' +
+          '<tr><td>Artikelnummer</td><td>' + (tool.sku || '—') + '</td></tr>' +
+          '<tr><td>Ø Durchmesser</td><td>' + (tool.diameter ? tool.diameter + ' mm' : '—') + '</td></tr>' +
+          '<tr><td>Schaft Ø</td><td>' + (tool.shank ? tool.shank + ' mm' : '—') + '</td></tr>' +
+          '<tr><td>Gesamtlänge</td><td>' + (tool.length ? tool.length + ' mm' : '—') + '</td></tr>' +
+          '<tr><td>Schneidenzahl</td><td>' + (tool.flutes || '—') + '</td></tr>' +
+          '<tr><td>Beschichtung</td><td>' + (tool.coating || '—') + '</td></tr>' +
+          '<tr><td>Werkstoff</td><td>' + (tool.material || '—') + '</td></tr>' +
+          '<tr><td>Werkzeughalter</td><td>' + (tool.holder || '—') + '</td></tr>' +
+          '<tr><td>Z-Länge</td><td>' + (tool.zLength ? tool.zLength + ' mm' : '—') + '</td></tr>' +
+          '<tr><td>Kühlung</td><td>' + (tool.coolant || '—') + '</td></tr>' +
+          '<tr><td>Magazin-Platz</td><td>' + (tool.magazine || '—') + '</td></tr>' +
+          '<tr><td>Aktuelle Maschine</td><td>' + (tool.machine || '—') + '</td></tr>' +
+          '<tr><td>Lagerort</td><td>' + (tool.location || '—') + '</td></tr>' +
+          (tool.link ? '<tr><td>Link</td><td>' + tool.link + '</td></tr>' : '') +
+        '</table>' +
+        (tool.notes ? '<div class="notes"><h3>Notizen / Schnittdaten</h3><p>' + tool.notes + '</p></div>' : '') +
+        '<div class="footer">FJK CNC-Werkzeugverwaltung · Werkzeugdatenblatt</div>' +
+        '</body></html>';
+      const w = window.open('', '_blank');
+      w.document.write(printHtml); w.document.close(); w.focus();
+      setTimeout(function() { w.print(); w.close(); }, 300);
+    }
+
+    function printLabel() {
+      if (!currentEditId) return;
+      const tool = tools.find(function(t) { return t.id === currentEditId; });
+      if (!tool) return;
+      const icon = tool.icon || defaultIconForCategory(tool.category);
+      const shortName = tool.name.length > 22 ? tool.name.substring(0, 22) + '…' : tool.name;
+      const labelHtml = '<html><head><title>Werkzeug-Etikett</title>' +
+        '<style>' +
+          '@page { size: 50mm 30mm; margin: 0; }' +
+          '* { margin: 0; padding: 0; box-sizing: border-box; }' +
+          'body { width: 50mm; height: 30mm; font-family: Arial, Helvetica, sans-serif; font-size: 7pt; line-height: 1.15; color: #000; background: #fff; overflow: hidden; padding: 2mm; }' +
+          '.label { width: 100%; height: 100%; border: 0.3mm solid #000; border-radius: 1mm; padding: 1.5mm; display: flex; flex-direction: column; justify-content: space-between; }' +
+          '.top-row { display: flex; justify-content: space-between; align-items: flex-start; }' +
+          '.icon { font-size: 10pt; line-height: 1; }' +
+          '.status { font-size: 6pt; font-weight: bold; padding: 0.3mm 1mm; border-radius: 0.5mm; background: #e2e8f0; }' +
+          '.name { font-size: 7.5pt; font-weight: bold; color: #000; margin-top: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
+          '.specs { display: flex; gap: 2mm; font-size: 6.5pt; color: #334155; margin-top: 0.5mm; }' +
+          '.specs span { white-space: nowrap; }' +
+          '.bottom-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 0.5mm; padding-top: 0.5mm; border-top: 0.2mm solid #cbd5e1; }' +
+          '.z-info { font-size: 7pt; font-weight: bold; }' +
+          '.holder { font-size: 6pt; color: #475569; }' +
+          '.mag { font-size: 6pt; font-weight: bold; color: #000; background: #f1f5f9; padding: 0.3mm 1mm; border-radius: 0.5mm; }' +
+        '</style></head><body>' +
+        '<div class="label">' +
+          '<div>' +
+            '<div class="top-row"><span class="icon">' + icon + '</span><span class="status">' + tool.status + '</span></div>' +
+            '<div class="name">' + shortName + '</div>' +
+            '<div class="specs">' +
+              (tool.diameter ? '<span>Ø' + tool.diameter + ' mm</span>' : '') +
+              (tool.material ? '<span>' + tool.material + '</span>' : '') +
+              (tool.coolant ? '<span>' + (tool.coolant === 'Minimalmengenschmierung' ? 'MMS' : tool.coolant) + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="bottom-row">' +
+            '<div>' +
+              (tool.zLength ? '<div class="z-info">Z: ' + tool.zLength + ' mm</div>' : '') +
+              (tool.holder ? '<div class="holder">' + tool.holder + '</div>' : '') +
+            '</div>' +
+            (tool.magazine ? '<div class="mag">' + tool.magazine + '</div>' : '') +
+          '</div>' +
+        '</div>' +
+        '</body></html>';
+      const w = window.open('', '_blank');
+      w.document.write(labelHtml); w.document.close(); w.focus();
+      setTimeout(function() { w.print(); w.close(); }, 300);
+    }
+
+    // ==================== EVENT LISTENERS ====================
+    document.getElementById('tools-grid').addEventListener('click', function(e) {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      const action = btn.getAttribute('data-action');
+      if (action === 'edit') { const tool = tools.find(function(t) { return t.id === id; }); if (tool) openModal(tool); }
+      else if (action === 'copy') { copyTool(id); } // NEU: Kopieren
+      else if (action === 'delete') { deleteId = id; openDeleteModal(); }
+    });
+
+    document.getElementById('tool-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const id = document.getElementById('tool-id').value;
+      const data = {
+        id: id || generateId(),
+        name: document.getElementById('tool-name').value.trim(),
+        category: document.getElementById('tool-category').value,
+        status: document.getElementById('tool-status').value,
+        icon: document.getElementById('tool-icon').value.trim() || defaultIconForCategory(document.getElementById('tool-category').value),
+        image: currentImageBase64,
+        imageUrl: document.getElementById('tool-image-url').value.trim(),
+        link: document.getElementById('tool-link').value.trim(),
+        diameter: document.getElementById('tool-diameter').value,
+        shank: document.getElementById('tool-shank').value,
+        length: document.getElementById('tool-length').value,
+        flutes: document.getElementById('tool-flutes').value,
+        coating: document.getElementById('tool-coating').value.trim(),
+        material: document.getElementById('tool-material').value.trim(),
+        manufacturer: document.getElementById('tool-manufacturer').value.trim(),
+        sku: document.getElementById('tool-sku').value.trim(),
+        magazine: document.getElementById('tool-magazine').value.trim(),
+        holder: document.getElementById('tool-holder').value.trim(),
+        zLength: document.getElementById('tool-zlength').value,
+        coolant: document.getElementById('tool-coolant').value,
+        machine: document.getElementById('tool-machine').value.trim(),
+        location: document.getElementById('tool-location').value.trim(),
+        notes: document.getElementById('tool-notes').value.trim()
+      };
+      if (id) { const idx = tools.findIndex(function(t) { return t.id === id; }); if (idx !== -1) tools[idx] = data; }
+      else tools.push(data);
+      saveTools(); renderStats(); renderGrid(); closeModal();
+    });
+
+    document.getElementById('btn-confirm-delete').addEventListener('click', function() {
+      if (deleteId) { tools = tools.filter(function(t) { return t.id !== deleteId; }); saveTools(); renderStats(); renderGrid(); }
+      closeDeleteModal();
+    });
+
+    document.getElementById('btn-add').addEventListener('click', function() { openModal(null); });
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('btn-cancel').addEventListener('click', closeModal);
+    document.getElementById('modal-backdrop').addEventListener('click', closeModal);
+    document.getElementById('btn-cancel-delete').addEventListener('click', closeDeleteModal);
+    document.getElementById('delete-backdrop').addEventListener('click', closeDeleteModal);
+    document.getElementById('search-input').addEventListener('input', renderGrid);
+    document.getElementById('filter-status').addEventListener('change', renderGrid);
+    document.getElementById('filter-category').addEventListener('change', renderGrid);
+    document.getElementById('tool-icon').addEventListener('input', updateIconPreview);
+    document.getElementById('tool-category').addEventListener('change', function() {
+      const iconInput = document.getElementById('tool-icon');
+      if (!iconInput.value.trim()) { iconInput.value = defaultIconForCategory(this.value); updateIconPreview(); }
+    });
+    document.getElementById('btn-print').addEventListener('click', printDataSheet);
+    document.getElementById('btn-print-label').addEventListener('click', printLabel);
+
+    // Server modal events
+    document.getElementById('btn-sync').addEventListener('click', openServerModal);
+    document.getElementById('server-modal-close').addEventListener('click', closeServerModal);
+    document.getElementById('server-backdrop').addEventListener('click', closeServerModal);
+    document.getElementById('btn-server-cancel').addEventListener('click', closeServerModal);
+    document.getElementById('btn-create-bin').addEventListener('click', createNewBin);
+    document.getElementById('btn-disconnect').addEventListener('click', function() {
+      serverConfig = { key: '', binId: '' };
+      saveServerConfig();
+      document.getElementById('server-key').value = '';
+      document.getElementById('server-bin').value = '';
+      updateDisconnectButton();
+      showToast('🔌 Server-Verbindung getrennt', 'info');
+    });
+    document.getElementById('server-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      serverConfig.key = document.getElementById('server-key').value.trim();
+      serverConfig.binId = document.getElementById('server-bin').value.trim();
+      saveServerConfig();
+      closeServerModal();
+      if (serverConfig.binId) {
+        syncFromServer();
+      } else if (serverConfig.key) {
+        showToast('✅ Key gespeichert. Klicke "Neuen Bin erstellen" um einen Speicherort zu erzeugen.', 'success');
+      }
+    });
+
+    // ==================== INIT ====================
+    loadServerConfig();
+    loadTools();
+    renderStats();
+    renderGrid();
+    if (serverConfig.key && serverConfig.binId) {
+      syncFromServer();
+    }
+  });
+  </script>
+</body>
+</html>
