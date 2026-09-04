@@ -31,7 +31,7 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 const initialTools = [
   {
     id: '1',
-    name: 'VHM-Bohrer Ø6,0 mm lang',
+    name: 'VHM-Bohrer Ø6,0 mm lang88',
     category: 'VHM-Bohrer',
     status: 'verfügbar',
     quantity: '3',
