@@ -1,0 +1,6 @@
+{
+  "name": "FJK CNC-Werkzeugverwaltung",
+  "description": "CNC-Werkzeugverwaltung zur Organisation, Verfolgung und Kennzeichnung von CNC-Werkzeugen.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

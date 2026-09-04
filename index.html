@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FJK CNC-Werkzeugverwaltung</title>
+  <meta name="description" content="CNC-Werkzeugverwaltung zur Organisation, Verfolgung und Kennzeichnung von CNC-Werkzeugen.">
+  <meta property="og:title" content="FJK CNC-Werkzeugverwaltung">
+  <meta property="og:description" content="CNC-Werkzeugverwaltung zur Organisation, Verfolgung und Kennzeichnung von CNC-Werkzeugen.">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
@@ -524,6 +527,7 @@
         <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
           <div class="stats">
             <div class="stat-box"><div class="stat-value" id="total-count">0</div><div class="stat-label">Gesamt</div></div>
+            <div class="stat-box"><div class="stat-value" id="total-pieces-count">0</div><div class="stat-label">Stk. Gesamt</div></div>
             <div class="stat-box"><div class="stat-value" id="available-count">0</div><div class="stat-label">Verfügbar</div></div>
             <div class="stat-box"><div class="stat-value" id="in-use-count">0</div><div class="stat-label">In Maschine</div></div>
             <div class="stat-box"><div class="stat-value" id="worn-count">0</div><div class="stat-label">Verschlissen</div></div>
@@ -718,9 +722,15 @@
               <input type="text" id="tool-machine" placeholder="z.B. DMG DMU 60" class="form-input">
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Lagerort / Schublade</label>
-            <input type="text" id="tool-location" placeholder="z.B. Schublade B3" class="form-input">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Lagerort / Schublade</label>
+              <input type="text" id="tool-location" placeholder="z.B. Schublade B3" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Stückzahl / Bestand</label>
+              <input type="number" id="tool-quantity" min="0" step="1" placeholder="z.B. 1" class="form-input">
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Notizen / Schnittdaten</label>
@@ -829,7 +839,7 @@
 
     /* ========== APP ========== */
     const demoTools = [
-      { id: '1', name: 'VHM-Bohrer Ø6,0 mm lang', category: 'VHM-Bohrer', status: 'verfügbar', icon: '🔩', image: '', link: '', diameter: '6.00', shank: '6.0', length: '57.0', flutes: '2', coating: 'TiAlN', material: 'VHM', manufacturer: 'Guhring', sku: '5511-6.000', magazine: 'T12', holder: 'HSK-A63', zLength: '142.50', coolant: 'Innenkühlung', machine: '', location: 'Schublade A1', notes: 'vc=120 m/min, fz=0.08 mm, für Stahl 1.4301' },
+      { id: '1', name: 'VHM-Bohrer Ø6,0 mm lang', category: 'VHM-Bohrer', status: 'verfügbar', quantity: '3', icon: '🔩', image: '', link: '', diameter: '6.00', shank: '6.0', length: '57.0', flutes: '2', coating: 'TiAlN', material: 'VHM', manufacturer: 'Guhring', sku: '5511-6.000', magazine: 'T12', holder: 'HSK-A63', zLength: '142.50', coolant: 'Innenkühlung', machine: '', location: 'Schublade A1', notes: 'vc=120 m/min, fz=0.08 mm, für Stahl 1.4301' },
     ];
 
     let tools = [];
@@ -1004,6 +1014,12 @@
 
     function renderStats() {
       document.getElementById('total-count').textContent = tools.length;
+      const totalPieces = tools.reduce(function(acc, t) {
+        const q = parseInt(t.quantity, 10);
+        return acc + (isNaN(q) || q < 0 ? 1 : q);
+      }, 0);
+      const totalPiecesEl = document.getElementById('total-pieces-count');
+      if (totalPiecesEl) totalPiecesEl.textContent = totalPieces;
       document.getElementById('available-count').textContent = tools.filter(function(t) { return t.status === 'verfügbar' || t.status === 'neu'; }).length;
       document.getElementById('in-use-count').textContent = tools.filter(function(t) { return t.status === 'in Maschine'; }).length;
       document.getElementById('worn-count').textContent = tools.filter(function(t) { return t.status === 'verschlissen' || t.status === 'nicht verfügbar'; }).length;
@@ -1014,7 +1030,7 @@
       const status = document.getElementById('filter-status').value;
       const category = document.getElementById('filter-category').value;
       return tools.filter(function(t) {
-        const s = !search || [t.name, t.diameter, t.manufacturer, t.sku, t.magazine, t.location, t.machine, t.coolant, t.holder, t.zLength].some(function(v) { return (v || '').toLowerCase().includes(search); });
+        const s = !search || [t.name, t.diameter, t.manufacturer, t.sku, t.magazine, t.location, t.machine, t.coolant, t.holder, t.zLength, t.quantity ? (t.quantity + ' stk') : ''].some(function(v) { return (v || '').toLowerCase().includes(search); });
         return s && (status === 'all' || t.status === status) && (category === 'all' || t.category === category);
       }).sort(function(a, b) { return a.name.localeCompare(b.name); });
     }
@@ -1039,11 +1055,15 @@
           ? '<img src="' + esc(tool.imageUrl) + '" class="card-image" alt="Werkzeugbild" onerror="this.style.display=\'none\'">'
           : (tool.image ? '<img src="' + tool.image + '" class="card-image" alt="Werkzeugbild">' : '');
         const linkHtml = tool.link ? '<a href="' + esc(tool.link) + '" target="_blank" class="card-link">🔗 Hersteller-Link</a>' : '';
+        const qtyDisplay = (tool.quantity !== undefined && tool.quantity !== null && tool.quantity !== '') ? tool.quantity : '1';
         return `
         <div class="card">
           <div class="card-header">
             <div class="card-icon">${icon}</div>
-            <span class="status-badge ${stClass}">${tool.status}</span>
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <span class="status-badge" style="background:rgba(59,130,246,0.15); color:var(--primary); font-weight:700;">📦 ${esc(qtyDisplay)} Stk.</span>
+              <span class="status-badge ${stClass}">${tool.status}</span>
+            </div>
           </div>
           ${imageHtml}
           <div class="card-title" title="${esc(tool.name)}">${esc(tool.name)}</div>
@@ -1051,6 +1071,7 @@
             ${tool.diameter ? '<b>Ø' + tool.diameter + ' mm</b>' : ''}
             ${tool.length ? ' · ' + tool.length + ' mm' : ''}
             ${tool.flutes ? ' · ' + tool.flutes + ' Schneiden' : ''}
+            · <b style="color:var(--text-title);">${esc(qtyDisplay)} Stück</b>
           </div>
           <div class="tags">
             ${tool.coating && tool.coating !== '—' ? '<span class="tag">' + esc(tool.coating) + '</span>' : ''}
@@ -1061,7 +1082,7 @@
           <div class="card-info">
             ${tool.magazine ? '🧲 ' + esc(tool.magazine) + '<br>' : ''}
             ${tool.zLength ? '📏 Z: ' + esc(tool.zLength) + ' mm<br>' : ''}
-            📍 ${esc(tool.location || '—')}<br>
+            📍 ${esc(tool.location || '—')} (${esc(qtyDisplay)} Stk.)<br>
             ${tool.machine ? '🏭 ' + esc(tool.machine) + '<br>' : ''}
             ${linkHtml}
           </div>
@@ -1085,6 +1106,7 @@
       clone.id = Date.now().toString(36) + Math.random().toString(36).substr(2);
       clone.name = clone.name + ' (Kopie)';
       clone.status = 'neu';
+      clone.quantity = original.quantity || '1';
       clone.magazine = '';
       clone.machine = '';
       clone.location = '';
@@ -1163,6 +1185,7 @@
         document.getElementById('tool-coolant').value = data.coolant || 'Innenkühlung';
         document.getElementById('tool-machine').value = data.machine;
         document.getElementById('tool-location').value = data.location;
+        document.getElementById('tool-quantity').value = (data.quantity !== undefined && data.quantity !== null && data.quantity !== '') ? data.quantity : '1';
         document.getElementById('tool-notes').value = data.notes;
         showImagePreview(data.image || '');
         document.getElementById('tool-image-url').value = data.imageUrl || '';
@@ -1173,6 +1196,7 @@
         document.getElementById('modal-title').textContent = 'Neues CNC-Werkzeug';
         document.getElementById('tool-id').value = '';
         document.getElementById('tool-icon').value = '⚙️';
+        document.getElementById('tool-quantity').value = '1';
         document.getElementById('tool-coolant').value = 'Innenkühlung';
         showImagePreview('');
         printBtn.style.display = 'none';
@@ -1247,14 +1271,56 @@
           '<tr><td>Magazin-Platz</td><td>' + (tool.magazine || '—') + '</td></tr>' +
           '<tr><td>Aktuelle Maschine</td><td>' + (tool.machine || '—') + '</td></tr>' +
           '<tr><td>Lagerort</td><td>' + (tool.location || '—') + '</td></tr>' +
+          '<tr><td>Stückzahl / Bestand</td><td><b>' + (tool.quantity ? tool.quantity + ' Stück' : '1 Stück') + '</b></td></tr>' +
           (tool.link ? '<tr><td>Link</td><td>' + tool.link + '</td></tr>' : '') +
         '</table>' +
         (tool.notes ? '<div class="notes"><h3>Notizen / Schnittdaten</h3><p>' + tool.notes + '</p></div>' : '') +
         '<div class="footer">FJK CNC-Werkzeugverwaltung · Werkzeugdatenblatt</div>' +
         '</body></html>';
+      printHtmlDoc(printHtml);
+    }
+
+    function printHtmlDoc(html) {
+      try {
+        let printFrame = document.getElementById('print-iframe');
+        if (!printFrame) {
+          printFrame = document.createElement('iframe');
+          printFrame.id = 'print-iframe';
+          printFrame.style.position = 'fixed';
+          printFrame.style.right = '0';
+          printFrame.style.bottom = '0';
+          printFrame.style.width = '0';
+          printFrame.style.height = '0';
+          printFrame.style.border = '0';
+          document.body.appendChild(printFrame);
+        }
+        const doc = printFrame.contentDocument || printFrame.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+        setTimeout(function() {
+          try {
+            if (printFrame.contentWindow) {
+              printFrame.contentWindow.focus();
+              printFrame.contentWindow.print();
+              return;
+            }
+          } catch(e) {}
+          openPrintWindow(html);
+        }, 300);
+      } catch(e) {
+        openPrintWindow(html);
+      }
+    }
+
+    function openPrintWindow(html) {
       const w = window.open('', '_blank');
-      w.document.write(printHtml); w.document.close(); w.focus();
-      setTimeout(function() { w.print(); w.close(); }, 300);
+      if (w) {
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+        setTimeout(function() { w.print(); w.close(); }, 300);
+      }
     }
 
     function printLabel() {
@@ -1287,6 +1353,7 @@
             '<div class="specs">' +
               (tool.diameter ? '<span>Ø' + tool.diameter + ' mm</span>' : '') +
               (tool.material ? '<span>' + tool.material + '</span>' : '') +
+              (tool.quantity ? '<span><b>' + tool.quantity + ' Stk.</b></span>' : '') +
               (tool.coolant ? '<span>' + (tool.coolant === 'Minimalmengenschmierung' ? 'MMS' : tool.coolant) + '</span>' : '') +
             '</div>' +
           '</div>' +
@@ -1299,9 +1366,7 @@
           '</div>' +
         '</div>' +
         '</body></html>';
-      const w = window.open('', '_blank');
-      w.document.write(labelHtml); w.document.close(); w.focus();
-      setTimeout(function() { w.print(); w.close(); }, 300);
+      printHtmlDoc(labelHtml);
     }
 
     // ==================== EVENT LISTENERS ====================
@@ -1341,6 +1406,7 @@
         coolant: document.getElementById('tool-coolant').value,
         machine: document.getElementById('tool-machine').value.trim(),
         location: document.getElementById('tool-location').value.trim(),
+        quantity: document.getElementById('tool-quantity').value.trim() || '1',
         notes: document.getElementById('tool-notes').value.trim()
       };
       if (id) { const idx = tools.findIndex(function(t) { return t.id === id; }); if (idx !== -1) tools[idx] = data; }

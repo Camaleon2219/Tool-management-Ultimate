@@ -1,0 +1,14 @@
+{
+  "name": "fjk-cnc-tool-management",
+  "version": "1.0.0",
+  "description": "FJK CNC-Werkzeugverwaltung",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "mkdir -p dist && cp index.html dist/",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
