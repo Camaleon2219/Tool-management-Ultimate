@@ -13,13 +13,19 @@ app.use(express.json({ limit: '15mb' }));
 app.use(express.static(__dirname));
 
 const DATA_DIR = path.join(__dirname, 'data');
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const TOOLS_FILE = path.join(DATA_DIR, 'tools.json');
 const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
 
-// Ensure data folder exists
+// Ensure data & uploads folders exist
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Initial demo tools
 const initialTools = [
@@ -137,6 +143,29 @@ app.post('/api/history', (req, res) => {
 app.delete('/api/history', (req, res) => {
   writeHistory([]);
   res.json({ success: true });
+});
+
+// Image Upload API (saves images directly as files on server disk)
+app.post('/api/upload', (req, res) => {
+  try {
+    const { data } = req.body;
+    if (!data) return res.status(400).json({ error: 'Keine Bilddaten übermittelt' });
+    const matches = data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return res.status(400).json({ error: 'Ungültiges Base64-Bildformat' });
+    }
+    let ext = matches[1].split('/')[1] || 'png';
+    if (ext === 'jpeg') ext = 'jpg';
+    const safeExt = ext.replace(/[^a-zA-Z0-9]/g, '') || 'png';
+    const filename = 'werkzeug_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '.' + safeExt;
+    const filePath = path.join(UPLOADS_DIR, filename);
+    fs.writeFileSync(filePath, Buffer.from(matches[2], 'base64'));
+    const url = '/uploads/' + filename;
+    res.json({ success: true, url });
+  } catch (err) {
+    console.error('Fehler beim Bildspeichern:', err);
+    res.status(500).json({ error: 'Fehler beim Speichern des Bildes auf dem Server' });
+  }
 });
 
 // Fallback to index.html

@@ -1149,6 +1149,7 @@
         const errEl = document.getElementById('login-error');
         if (errEl) errEl.style.display = 'none';
         checkLogin();
+        fetchBackendData(false);
         showToast('👋 Willkommen zurück, ' + currentUser + '!', 'success');
       } else {
         const errEl = document.getElementById('login-error');
@@ -1288,9 +1289,13 @@
               renderStats();
               renderGrid();
             }
-          } else if (tools.length > 0) {
-            // Server hat noch keine Daten, mit lokalem Stand befüllen
+          } else if (tools.length === 0) {
+            // Server und lokaler Speicher sind beide leer (Erststart): Demo-Werkzeug anlegen
+            tools = demoTools.slice();
+            saveToolsLocal();
             await saveToolsToBackend();
+            renderStats();
+            renderGrid();
           }
         }
 
@@ -1394,11 +1399,11 @@
             tools = JSON.parse(v4Stored);
             saveToolsLocal();
           } else {
-            tools = demoTools.slice();
-            saveToolsLocal();
+            // Wenn LocalStorage geleert wurde, auf Server warten (nicht mit leeren Demo-Tools überschreiben)
+            tools = [];
           }
         }
-      } catch(e) { tools = demoTools.slice(); }
+      } catch(e) { tools = []; }
     }
 
     function saveToolsLocal() {
@@ -1556,16 +1561,18 @@
     const imagePreviewContainer = document.getElementById('image-preview-container');
     const btnRemoveImage = document.getElementById('btn-remove-image');
 
-    function showImagePreview(base64) {
-      currentImageBase64 = base64;
-      if (base64) {
-        imagePreviewContainer.innerHTML = '<img src="' + base64 + '" class="image-preview" alt="Vorschau">';
+    function showImagePreview(src) {
+      if (src && src.startsWith('data:')) {
+        currentImageBase64 = src;
+      }
+      if (src) {
+        imagePreviewContainer.innerHTML = '<img src="' + esc(src) + '" class="image-preview" alt="Vorschau" onerror="this.parentElement.innerHTML=\'<div class=\\\'image-placeholder\\\'>❌ Bild konnte nicht geladen werden</div>\';">';
         imageUploadArea.classList.add('has-image');
-        btnRemoveImage.style.display = 'inline-block';
+        if (btnRemoveImage) btnRemoveImage.style.display = 'inline-block';
       } else {
         imagePreviewContainer.innerHTML = '<div class="image-placeholder">📷 Bild hierher ziehen oder klicken zum Auswählen</div>';
         imageUploadArea.classList.remove('has-image');
-        btnRemoveImage.style.display = 'none';
+        if (btnRemoveImage) btnRemoveImage.style.display = 'none';
       }
     }
 
@@ -1580,16 +1587,60 @@
       imageInput.addEventListener('change', function(e) { if (e.target.files.length > 0) handleImageFile(e.target.files[0]); });
     }
 
-    function handleImageFile(file) {
-      if (!file.type.startsWith('image/')) { showToast('⚠️ Bitte nur Bilddateien hochladen (JPG, PNG, GIF, etc.)', 'warning'); return; }
-      if (file.size > 2 * 1024 * 1024) { showToast('⚠️ Das Bild ist zu groß. Maximal 2 MB erlaubt.', 'warning'); return; }
+    async function handleImageFile(file) {
+      if (!file.type.startsWith('image/')) { showToast('⚠️ Bitte nur Bilddateien hochladen (JPG, PNG, GIF, WebP)', 'warning'); return; }
+      if (file.size > 8 * 1024 * 1024) { showToast('⚠️ Das Bild ist zu groß. Maximal 8 MB erlaubt.', 'warning'); return; }
+      
       const reader = new FileReader();
-      reader.onload = function(e) { showImagePreview(e.target.result); };
+      reader.onload = async function(e) {
+        const base64 = e.target.result;
+        showImagePreview(base64);
+
+        // Bild direkt dauerhaft auf den Server hochladen (in /uploads Ordner)
+        try {
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: base64, filename: file.name })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.url) {
+              const urlInp = document.getElementById('tool-image-url');
+              if (urlInp) urlInp.value = data.url;
+              currentImageBase64 = ''; // URL ist auf dem Server gespeichert
+              showImagePreview(data.url);
+              showToast('💾 Bild dauerhaft auf dem Werkstatt-Server gespeichert', 'success');
+            }
+          }
+        } catch(err) {
+          console.warn('Server upload fallback to base64:', err);
+          currentImageBase64 = base64;
+        }
+      };
       reader.readAsDataURL(file);
     }
 
-    if (btnRemoveImage && imageInput) {
-      btnRemoveImage.addEventListener('click', function(e) { e.stopPropagation(); showImagePreview(''); imageInput.value = ''; });
+    safeOn('tool-image-url', 'input', function(e) {
+      const url = (e.target.value || '').trim();
+      if (url) {
+        showImagePreview(url);
+      } else if (currentImageBase64) {
+        showImagePreview(currentImageBase64);
+      } else {
+        showImagePreview('');
+      }
+    });
+
+    if (btnRemoveImage) {
+      btnRemoveImage.addEventListener('click', function(e) {
+        e.stopPropagation();
+        currentImageBase64 = '';
+        showImagePreview('');
+        if (imageInput) imageInput.value = '';
+        const urlInp = document.getElementById('tool-image-url');
+        if (urlInp) urlInp.value = '';
+      });
     }
 
     // ==================== MODALS ====================
@@ -1598,7 +1649,9 @@
       const form = document.getElementById('tool-form');
       const printBtn = document.getElementById('btn-print');
       const labelBtn = document.getElementById('btn-print-label');
-      form.reset(); imageInput.value = '';
+      form.reset();
+      if (imageInput) imageInput.value = '';
+      currentImageBase64 = '';
       if (data) {
         currentEditId = data.id;
         document.getElementById('modal-title').textContent = 'CNC-Werkzeug bearbeiten';
@@ -1624,8 +1677,13 @@
         document.getElementById('tool-location').value = data.location;
         document.getElementById('tool-quantity').value = (data.quantity !== undefined && data.quantity !== null && data.quantity !== '') ? data.quantity : '1';
         document.getElementById('tool-notes').value = data.notes;
-        showImagePreview(data.image || '');
+        
+        // Bild sowohl aus data.imageUrl als auch aus data.image anzeigen
+        const activeImg = data.imageUrl || data.image || '';
+        showImagePreview(activeImg);
         document.getElementById('tool-image-url').value = data.imageUrl || '';
+        if (data.image && !data.imageUrl) currentImageBase64 = data.image;
+
         printBtn.style.display = 'inline-flex';
         labelBtn.style.display = 'inline-flex';
 
@@ -1703,7 +1761,8 @@
       if (!tool) return;
       const icon = tool.icon || defaultIconForCategory(tool.category);
       const now = new Date().toLocaleDateString('de-DE');
-      const imageHtml = tool.image ? '<div style="text-align:center; margin-bottom:1.5rem;"><img src="' + tool.image + '" style="max-height:180px; max-width:100%; border-radius:0.5rem;"></div>' : '';
+      const activeImg = tool.imageUrl || tool.image;
+      const imageHtml = activeImg ? '<div style="text-align:center; margin-bottom:1.5rem;"><img src="' + esc(activeImg) + '" style="max-height:180px; max-width:100%; border-radius:0.5rem;"></div>' : '';
       const printHtml = '<html><head><title>Werkzeugdatenblatt</title>' +
         '<style>' +
           'body { font-family: Arial, sans-serif; margin: 0; padding: 2rem; color: #1e293b; }' +
