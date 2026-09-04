@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "build": "mkdir -p dist && cp index.html dist/",
+    "build": "mkdir -p dist && cp index.html manifest.json sw.js dist/ && cp -r icons dist/",
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.4"
   }
 }

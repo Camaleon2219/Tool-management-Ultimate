@@ -7,6 +7,18 @@
   <meta name="description" content="CNC-Werkzeugverwaltung zur Organisation, Verfolgung und Kennzeichnung von CNC-Werkzeugen.">
   <meta property="og:title" content="FJK CNC-Werkzeugverwaltung">
   <meta property="og:description" content="CNC-Werkzeugverwaltung zur Organisation, Verfolgung und Kennzeichnung von CNC-Werkzeugen.">
+
+  <!-- Progressive Web App (PWA) Capabilities -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FJK CNC">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
@@ -680,6 +692,9 @@
             <span id="current-user-display" style="font-weight:600;">Mitarbeiter</span>
             <button type="button" id="btn-switch-user" class="btn-user-switch" title="Mitarbeiter wechseln">Wechseln</button>
           </div>
+          <button type="button" class="btn btn-sm" id="btn-install-pwa" style="display:inline-flex; align-items:center; gap:0.35rem; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:#fff; border:1px solid #60a5fa; font-weight:600; box-shadow:0 2px 6px rgba(37,99,235,0.35); cursor:pointer;" title="Werkzeugverwaltung als App auf PC oder Handy installieren">
+            <span>📲</span> App installieren
+          </button>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-logout" style="display:none;">🔓 Abmelden</button>
         </div>
       </div>
@@ -1017,6 +1032,84 @@
           </div>
           <div style="margin-top:0.75rem; text-align:right;">
             <button type="button" class="btn btn-secondary btn-sm" id="btn-server-cancel">Schließen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PWA Installation Guide Modal -->
+    <div class="modal" id="install-modal">
+      <div class="modal-backdrop" id="install-backdrop"></div>
+      <div class="modal-box" style="max-width: 560px;">
+        <div class="modal-header">
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <img src="/icons/icon-192.png" alt="App Icon" style="width:36px; height:36px; border-radius:8px; border:1px solid rgba(255,255,255,0.2);">
+            <h2 class="modal-title">FJK CNC als App installieren</h2>
+          </div>
+          <button type="button" class="modal-close" id="install-modal-close">&times;</button>
+        </div>
+        <div style="padding: 0.5rem 0;">
+          <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem; line-height:1.5;">
+            Installiere die Werkzeugverwaltung direkt auf deinem <strong>Werkstatt-PC, Laptop, Smartphone oder Tablet</strong>. Die App startet anschließend wie ein eigenständiges Programm im Vollbild ohne störende Browserleiste.
+          </p>
+
+          <!-- iFrame Notice if running in preview window -->
+          <div id="install-iframe-banner" style="display:none; background:rgba(245,158,11,0.12); border:1px solid #f59e0b; border-radius:8px; padding:1rem; margin-bottom:1.25rem;">
+            <div style="font-weight:700; color:#fbbf24; margin-bottom:0.4rem; display:flex; align-items:center; gap:0.4rem; font-size:0.95rem;">
+              ⚠️ Du bist aktuell im Vorschau-Fenster (iFrame)
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-base); margin-bottom:0.75rem; line-height:1.45;">
+              Web-Browser (Chrome, Edge, Safari) sperren die App-Installation aus Sicherheitsgründen, wenn eine Website in einem <strong>Vorschau-Fenster</strong> eingebettet ist.<br>
+              <strong>Lösung:</strong> Klicke auf den Button unten, um die App in einem <strong>eigenen Tab</strong> zu öffnen. Dort erscheint sofort die normale Installation!
+            </p>
+            <a id="btn-open-in-tab" href="" target="_blank" class="btn btn-primary" style="display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; text-decoration:none; font-weight:700; width:100%; box-shadow:0 3px 10px rgba(37,99,235,0.4); padding:0.65rem 1rem;">
+              ↗️ In eigenem Tab öffnen &amp; installieren
+            </a>
+          </div>
+
+          <div id="install-native-banner" style="display:none; background:rgba(37,99,235,0.15); border:1px solid #3b82f6; border-radius:8px; padding:1rem; margin-bottom:1.25rem; text-align:center;">
+            <p style="font-weight:600; color:#93c5fd; margin-bottom:0.75rem;">1-Klick Installation für dieses Gerät verfügbar!</p>
+            <button type="button" class="btn btn-primary" id="btn-trigger-install" style="font-size:1rem; padding:0.65rem 1.5rem; width:100%; box-shadow:0 4px 12px rgba(37,99,235,0.4);">
+              📲 Jetzt direkt installieren
+            </button>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:0.85rem; font-size:0.875rem;">
+            <!-- Windows / Mac -->
+            <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:8px; padding:0.85rem;">
+              <strong style="color:#60a5fa; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
+                💻 Windows PC / Mac (Google Chrome / Microsoft Edge)
+              </strong>
+              <p style="margin:0; color:var(--text-base); line-height:1.45;">
+                Klicke in der Adressleiste oben rechts auf das <strong>Installieren-Symbol</strong> (🖥️ App installieren) oder drücke im Browsermenü (3 Punkte) auf <strong>„FJK CNC installieren“</strong>.
+              </p>
+            </div>
+
+            <!-- Android -->
+            <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:8px; padding:0.85rem;">
+              <strong style="color:#4ade80; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
+                📱 Android (Chrome / Samsung Browser)
+              </strong>
+              <p style="margin:0; color:var(--text-base); line-height:1.45;">
+                Tippe oben rechts auf das <strong>Drei-Punkte-Menü (⋮)</strong> und wähle <strong>„App installieren“</strong> oder <strong>„Zum Startbildschirm hinzufügen“</strong>.
+              </p>
+            </div>
+
+            <!-- iOS -->
+            <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:8px; padding:0.85rem;">
+              <strong style="color:#f472b6; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
+                🍎 iPhone / iPad (Safari)
+              </strong>
+              <p style="margin:0; color:var(--text-base); line-height:1.45;">
+                1. Tippe unten in Safari auf das <strong>Teilen-Symbol</strong> (Viereck mit Pfeil nach oben ⎋).<br>
+                2. Scrolle in der Liste nach unten und wähle <strong>„Zum Home-Bildschirm“</strong>.<br>
+                3. Tippe oben rechts auf <strong>„Hinzufügen“</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div style="margin-top:1.25rem; text-align:right;">
+            <button type="button" class="btn btn-secondary" id="btn-install-modal-close">Schließen</button>
           </div>
         </div>
       </div>
@@ -2224,6 +2317,124 @@
         showToast('❌ Fehler beim Erstellen des Backups', 'warning');
       }
     });
+
+    // ==================== PWA INSTALLATION ====================
+    let deferredPrompt = null;
+    const btnInstallPwa = document.getElementById('btn-install-pwa');
+    const installModal = document.getElementById('install-modal');
+    const installNativeBanner = document.getElementById('install-native-banner');
+    const installIframeBanner = document.getElementById('install-iframe-banner');
+    const btnOpenInTab = document.getElementById('btn-open-in-tab');
+
+    // Erkennen ob die App in einem iFrame (Vorschau) eingebettet ist
+    const isInIframe = (function() {
+      try {
+        return window.self !== window.top;
+      } catch (e) {
+        return true;
+      }
+    })();
+
+    // Erkennen ob die App bereits als installierte Standalone-App läuft
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                         window.navigator.standalone === true;
+
+    if (isStandalone) {
+      if (btnInstallPwa) btnInstallPwa.style.display = 'none';
+    } else {
+      if (btnInstallPwa) btnInstallPwa.style.display = 'inline-flex';
+    }
+
+    // Wenn im Browser-Vollbild ein echter PWA-Prompt möglich ist
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (btnInstallPwa && !isStandalone) {
+        btnInstallPwa.style.display = 'inline-flex';
+      }
+      if (installNativeBanner && !isInIframe) {
+        installNativeBanner.style.display = 'block';
+      }
+    });
+
+    window.addEventListener('appinstalled', function() {
+      deferredPrompt = null;
+      if (btnInstallPwa) btnInstallPwa.style.display = 'none';
+      if (installModal) installModal.classList.remove('active');
+      showToast('🎉 FJK CNC wurde erfolgreich als App installiert!', 'success');
+    });
+
+    function openInstallModal() {
+      if (!installModal) return;
+
+      if (isInIframe) {
+        if (installIframeBanner) {
+          installIframeBanner.style.display = 'block';
+          if (btnOpenInTab) {
+            btnOpenInTab.href = window.location.href;
+          }
+        }
+        if (installNativeBanner) installNativeBanner.style.display = 'none';
+      } else {
+        if (installIframeBanner) installIframeBanner.style.display = 'none';
+        if (deferredPrompt && installNativeBanner) {
+          installNativeBanner.style.display = 'block';
+        }
+      }
+
+      installModal.classList.add('active');
+    }
+
+    function closeInstallModal() {
+      if (installModal) installModal.classList.remove('active');
+    }
+
+    async function triggerInstallPrompt() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          showToast('🚀 App wird installiert...', 'success');
+          deferredPrompt = null;
+          if (btnInstallPwa) btnInstallPwa.style.display = 'none';
+          closeInstallModal();
+        }
+      } else {
+        openInstallModal();
+      }
+    }
+
+    safeOn('btn-install-pwa', 'click', function() {
+      if (isInIframe) {
+        openInstallModal();
+      } else if (deferredPrompt) {
+        triggerInstallPrompt();
+      } else {
+        openInstallModal();
+      }
+    });
+
+    safeOn('btn-trigger-install', 'click', triggerInstallPrompt);
+    safeOn('install-modal-close', 'click', closeInstallModal);
+    safeOn('btn-install-modal-close', 'click', closeInstallModal);
+    safeOn('install-backdrop', 'click', closeInstallModal);
+
+    // Service Worker registrieren für Offline-Unterstützung & PWA-Installierbarkeit
+    if ('serviceWorker' in navigator) {
+      const registerSW = function() {
+        navigator.serviceWorker.register('/sw.js').then(function(reg) {
+          console.log('PWA ServiceWorker aktiv:', reg.scope);
+        }).catch(function(err) {
+          console.warn('PWA ServiceWorker Registrierung fehlgeschlagen:', err);
+        });
+      };
+
+      if (document.readyState === 'complete') {
+        registerSW();
+      } else {
+        window.addEventListener('load', registerSW);
+      }
+    }
 
     // ==================== INIT ====================
     checkLogin();
