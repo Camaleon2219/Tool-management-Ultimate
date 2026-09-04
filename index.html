@@ -480,13 +480,143 @@
     }
     .login-box {
       background: var(--bg-surface); border-radius: 1rem; padding: 2rem;
-      width: 100%; max-width: 360px; text-align: center;
+      width: 100%; max-width: 380px; text-align: center;
       box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+      border: 1px solid var(--border);
     }
     .login-box .brand-icon { margin: 0 auto 1rem; width: 4rem; height: 4rem; font-size: 2rem; }
     .login-box h2 { font-size: 1.25rem; color: var(--text-title); margin-bottom: 0.25rem; }
     .login-box p { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
     .login-error { color: var(--danger); font-size: 0.875rem; margin-top: 0.75rem; display: none; }
+
+    /* AUDIT LOG & USER STYLES */
+    .user-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      background: var(--bg-surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font-size: 0.825rem;
+      color: var(--text-base);
+    }
+    .btn-user-switch {
+      background: transparent;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      border-radius: 0.35rem;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.725rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .btn-user-switch:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+    .user-chip {
+      background: var(--bg-surface-alt);
+      border: 1px solid var(--border);
+      color: var(--text-base);
+      padding: 0.3rem 0.6rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .user-chip:hover {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .card-audit {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      border-top: 1px dashed var(--border);
+      padding-top: 0.45rem;
+      margin-top: 0.5rem;
+      line-height: 1.35;
+      display: block;
+    }
+    .card-audit-user {
+      font-weight: 600;
+      color: var(--info);
+    }
+    .history-modal-box {
+      max-width: 900px;
+      width: 100%;
+    }
+    .history-filters {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .history-list {
+      max-height: 480px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: var(--bg-surface);
+    }
+    .history-item {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      transition: background 0.15s;
+    }
+    .history-item:last-child {
+      border-bottom: none;
+    }
+    .history-item:hover {
+      background: rgba(255,255,255,0.02);
+    }
+    .history-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .history-item-user {
+      font-weight: 700;
+      color: var(--text-title);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .history-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .history-badge.neu { background: rgba(34,197,94,0.18); color: var(--success); }
+    .history-badge.bearbeitet { background: rgba(59,130,246,0.18); color: var(--primary); }
+    .history-badge.kopiert { background: rgba(245,158,11,0.18); color: var(--warning); }
+    .history-badge.gelöscht { background: rgba(239,68,68,0.18); color: var(--danger); }
+    .history-item-time {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+    .history-item-details {
+      color: var(--text-base);
+      font-size: 0.8rem;
+      background: rgba(0,0,0,0.3);
+      padding: 0.4rem 0.65rem;
+      border-radius: 0.35rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-left: 3px solid var(--primary);
+    }
 
     @media (max-width: 768px) {
       .form-row, .form-row-3 { grid-template-columns: 1fr; }
@@ -505,10 +635,23 @@
     <div class="login-box">
       <div class="brand-icon">🔒</div>
       <h2>FJK CNC-Werkzeugverwaltung</h2>
-      <p>Zugangskontrolle – Bitte Passwort eingeben</p>
-      <input type="password" id="login-password" placeholder="Passwort" class="form-input" style="margin-bottom:1rem;">
-      <button type="button" class="btn btn-primary" id="btn-login" style="width:100%;">Anmelden</button>
-      <div class="login-error" id="login-error">❌ Falsches Passwort</div>
+      <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">Mitarbeiter-Anmeldung für Bestandsführung & Protokoll</p>
+      
+      <div style="text-align:left; margin-bottom:0.85rem;">
+        <label class="form-label" style="font-size:0.8rem; margin-bottom:0.25rem;">Dein Name / Mitarbeiter-Kürzel</label>
+        <input type="text" id="login-username" placeholder="z.B. G. Palacios" class="form-input" list="known-users-list" value="G. Palacios">
+        <datalist id="known-users-list"></datalist>
+        <div id="login-quick-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.4rem;"></div>
+      </div>
+
+      <div style="text-align:left; margin-bottom:1.25rem;">
+        <label class="form-label" style="font-size:0.8rem; margin-bottom:0.25rem;">Werkstatt-Passwort</label>
+        <input type="password" id="login-password" placeholder="Passwort" value="cnc2024" class="form-input">
+        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.25rem;">Standard: <code>cnc2024</code></div>
+      </div>
+
+      <button type="button" class="btn btn-primary" id="btn-login" style="width:100%; justify-content:center; padding:0.65rem;">Anmelden &amp; Starten</button>
+      <div class="login-error" id="login-error" style="display:none; margin-top:0.75rem;"></div>
     </div>
   </div>
 
@@ -531,6 +674,11 @@
             <div class="stat-box"><div class="stat-value" id="available-count">0</div><div class="stat-label">Verfügbar</div></div>
             <div class="stat-box"><div class="stat-value" id="in-use-count">0</div><div class="stat-label">In Maschine</div></div>
             <div class="stat-box"><div class="stat-value" id="worn-count">0</div><div class="stat-label">Verschlissen</div></div>
+          </div>
+          <div class="user-badge" id="current-user-badge" style="display:none;" title="Aktiver Mitarbeiter für Protokoll">
+            <span>👤</span>
+            <span id="current-user-display" style="font-weight:600;">Mitarbeiter</span>
+            <button type="button" id="btn-switch-user" class="btn-user-switch" title="Mitarbeiter wechseln">Wechseln</button>
           </div>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-logout" style="display:none;">🔓 Abmelden</button>
         </div>
@@ -566,9 +714,12 @@
         <option value="Platten">Platten</option>
       </select>
       <button type="button" class="btn btn-primary" id="btn-add"><span>+</span> Neues Werkzeug</button>
-      <button type="button" class="sync-status offline" id="btn-sync" title="Server-Synchronisation einrichten">
+      <button type="button" class="btn btn-secondary" id="btn-open-history" title="Änderungsprotokoll aller Werkzeuge anzeigen">
+        <span>📜</span> Protokoll <span id="history-count-badge" style="background:var(--primary); color:#fff; font-size:0.7rem; font-weight:700; padding:0.12rem 0.45rem; border-radius:1rem; margin-left:0.3rem;">0</span>
+      </button>
+      <button type="button" class="sync-status online" id="btn-sync" title="Server-Synchronisation (Live)">
         <span class="sync-dot"></span>
-        <span id="sync-text">Offline</span>
+        <span id="sync-text">Live Server</span>
       </button>
     </div>
     <div class="grid" id="tools-grid"></div>
@@ -736,6 +887,13 @@
             <label class="form-label">Notizen / Schnittdaten</label>
             <textarea id="tool-notes" rows="3" placeholder="vc=120 m/min, fz=0.08 mm..." class="form-textarea"></textarea>
           </div>
+          <div class="form-group" id="tool-history-section" style="display:none; margin-top:0.5rem;">
+            <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>🕒 Letzte Änderungen an diesem Werkzeug</span>
+              <span id="tool-history-meta" style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;"></span>
+            </label>
+            <div id="tool-history-list" style="max-height:130px; overflow-y:auto; background:var(--bg-surface-alt); border-radius:0.5rem; padding:0.6rem; font-size:0.75rem; border:1px solid var(--border);"></div>
+          </div>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Speichern</button>
             <button type="button" class="btn btn-secondary" id="btn-cancel">Abbrechen</button>
@@ -760,38 +918,107 @@
       </div>
     </div>
 
-    <!-- Server Config Modal -->
-    <div class="modal" id="server-modal">
-      <div class="modal-backdrop" id="server-backdrop"></div>
-      <div class="modal-box" style="max-width: 500px;">
+    <!-- History / Audit Log Modal -->
+    <div class="modal" id="history-modal">
+      <div class="modal-backdrop" id="history-backdrop"></div>
+      <div class="modal-box history-modal-box">
         <div class="modal-header">
-          <h2 class="modal-title">🌐 Server-Synchronisation</h2>
-          <button type="button" class="modal-close" id="server-modal-close">&times;</button>
+          <h2 class="modal-title">📜 Änderungsprotokoll (Wer, Wann, Was)</h2>
+          <button type="button" class="modal-close" id="history-close">&times;</button>
         </div>
-        <div class="server-config">
-          <h4>JSONBin.io einrichten</h4>
-          <p>Deine Daten werden in der Cloud bei <strong>JSONBin.io</strong> gespeichert. So sind sie auf allen Geräten verfügbar und dauerhaft gesichert.</p>
-          <p>1. Kostenlos registrieren auf <a href="https://jsonbin.io" target="_blank" style="color:var(--primary)">jsonbin.io</a><br>2. Einen <code>X-Master-Key</code> erstellen<br>3. Optional: Eine bestehende <code>Bin-ID</code> eintragen</p>
+        <div class="history-filters">
+          <input type="text" id="history-search" placeholder="Protokoll durchsuchen (Mitarbeiter, Werkzeug, Änderung)..." class="form-input" style="flex:2; min-width:200px;">
+          <select id="history-filter-user" class="form-select" style="flex:1; min-width:140px;">
+            <option value="all">Alle Mitarbeiter</option>
+          </select>
+          <select id="history-filter-action" class="form-select" style="flex:1; min-width:140px;">
+            <option value="all">Alle Aktionen</option>
+            <option value="Neu angelegt">Neu angelegt</option>
+            <option value="Bearbeitet">Bearbeitet</option>
+            <option value="Kopiert">Kopiert</option>
+            <option value="Gelöscht">Gelöscht</option>
+          </select>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-history" title="Aktualisieren">🔄 Aktualisieren</button>
         </div>
-        <form id="server-form">
-          <div class="form-group">
-            <label class="form-label">X-Master-Key *</label>
-            <input type="text" id="server-key" required placeholder="$2b$10$..." class="form-input">
+        <div class="history-list" id="history-list-container">
+          <!-- Dynamic entries -->
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; flex-wrap:wrap; gap:0.5rem;">
+          <span style="font-size:0.8rem; color:var(--text-muted);" id="history-total-count">0 Einträge geladen</span>
+          <div style="display:flex; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-history-filter">Filter zurücksetzen</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-history-close">Schließen</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Switch Modal -->
+    <div class="modal" id="user-switch-modal">
+      <div class="modal-backdrop" id="user-switch-backdrop"></div>
+      <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-header">
+          <h2 class="modal-title">👤 Mitarbeiter wechseln</h2>
+          <button type="button" class="modal-close" id="user-switch-close">&times;</button>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Wähle deinen Namen aus oder tippe einen neuen Namen ein, damit alle folgenden Änderungen dir zugeordnet werden.</p>
+        <form id="user-switch-form">
           <div class="form-group">
-            <label class="form-label">Bin-ID (optional – leer lassen für neuen Bin)</label>
-            <input type="text" id="server-bin" placeholder="66f..." class="form-input">
-            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">Wenn leer, wird automatisch ein neuer Bin erstellt.</p>
+            <label class="form-label">Mitarbeiter-Name / Kürzel</label>
+            <input type="text" id="user-switch-input" required placeholder="z.B. G. Palacios, M. Schmidt..." class="form-input">
+          </div>
+          <div style="margin-bottom:1rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.4rem;">Schnellauswahl:</div>
+            <div id="recent-users-chips" style="display:flex; flex-wrap:wrap; gap:0.4rem;"></div>
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Verbinden & Synchronisieren</button>
-            <button type="button" class="btn btn-secondary" id="btn-server-cancel">Abbrechen</button>
-          </div>
-          <div class="form-actions" style="margin-top:0.5rem;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-create-bin" style="flex:1; min-width:auto;">➕ Neuen Bin erstellen</button>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-disconnect" style="flex:1; min-width:auto; display:none;">🔌 Trennen</button>
+            <button type="submit" class="btn btn-primary">Als aktiv setzen</button>
+            <button type="button" class="btn btn-secondary" id="user-switch-cancel">Abbrechen</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Server Config & Storage Info Modal -->
+    <div class="modal" id="server-modal">
+      <div class="modal-backdrop" id="server-backdrop"></div>
+      <div class="modal-box" style="max-width: 540px;">
+        <div class="modal-header">
+          <h2 class="modal-title">🌐 Datenspeicherung & Server-Status</h2>
+          <button type="button" class="modal-close" id="server-modal-close">&times;</button>
+        </div>
+        <div style="padding: 0.5rem 0;">
+          <div style="display:flex; align-items:center; gap:0.75rem; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem;">
+            <div style="font-size:1.5rem;">🟢</div>
+            <div>
+              <div style="font-weight:700; color:#22c55e;">Zentraler Werkstatt-Server ist AKTIV</div>
+              <div style="font-size:0.8rem; color:var(--text-muted);">Automatische Live-Synchronisation alle 10 Sekunden</div>
+            </div>
+          </div>
+
+          <div style="font-size:0.875rem; line-height:1.6; margin-bottom:1.25rem;">
+            <p style="margin-bottom:0.75rem;"><strong>Wo werden deine Daten gespeichert?</strong></p>
+            <ul style="margin:0 0 1rem 1.25rem; padding:0; color:var(--text-base);">
+              <li><strong>1. Auf dem Server (dauerhaft):</strong> Alle Werkzeuge und das Änderungsprotokoll werden auf dem Server in <code>data/tools.json</code> und <code>data/history.json</code> gespeichert. Dadurch haben alle Mitarbeiter an allen PCs immer denselben Stand.</li>
+              <li><strong>2. Lokaler Browser-Cache:</strong> Eine Offline-Kopie wird zusätzlich im Browser gespeichert, damit die Seite verzögerungsfrei startet.</li>
+            </ul>
+
+            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; padding:0.85rem; margin-bottom:1rem;">
+              <strong style="color:var(--text-title); display:block; margin-bottom:0.25rem;">ℹ️ Was ist mit JSONBin.io?</strong>
+              <p style="margin:0; font-size:0.82rem; color:var(--text-muted);">
+                <strong>JSONBin.io wird nicht mehr benötigt!</strong> Die App besitzt nun ein eigenes, integriertes Backend. Es ist kein externer Drittanbieter, kein Konto und kein X-Master-Key mehr erforderlich. Deine Daten verbleiben sicher auf diesem Server.
+              </p>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary" id="btn-force-sync" style="flex:1;">🔄 Jetzt synchronisieren</button>
+            <button type="button" class="btn btn-secondary" id="btn-download-backup" style="flex:1;">💾 Backup als JSON</button>
+          </div>
+          <div style="margin-top:0.75rem; text-align:right;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-server-cancel">Schließen</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -801,53 +1028,239 @@
   <script>
   document.addEventListener('DOMContentLoaded', function() {
 
-    /* ========== LOGIN ========== */
-    const APP_PASSWORD = 'cnc2024';   // <-- HIER DEIN PASSWORT EINTRAGEN
+    /* ========== UTILITY & ESCAPING ========== */
+    function escapeAttr(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function esc(t) {
+      if (t === null || t === undefined || t === '') return '—';
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    function safeOn(id, event, handler) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener(event, handler);
+    }
+
+    /* ========== LOGIN & USER MANAGEMENT ========== */
+    const APP_PASSWORD = 'cnc2024';   // Standard-Passwort
+
+    let currentUser = localStorage.getItem('fjk_cnc_user') || 'G. Palacios';
+    let knownUsers = ['G. Palacios', 'M. Schmidt', 'T. Weber', 'K. Bauer'];
+    try {
+      const storedUsers = localStorage.getItem('fjk_cnc_known_users');
+      if (storedUsers) {
+        const parsed = JSON.parse(storedUsers);
+        if (Array.isArray(parsed) && parsed.length) knownUsers = parsed;
+      }
+    } catch(e) {}
+
+    function saveKnownUser(name) {
+      if (!name) return;
+      name = name.trim();
+      if (!knownUsers.includes(name)) {
+        knownUsers.unshift(name);
+        if (knownUsers.length > 20) knownUsers.length = 20;
+        try { localStorage.setItem('fjk_cnc_known_users', JSON.stringify(knownUsers)); } catch(e) {}
+      }
+      renderUserChipsAndDatalist();
+    }
+
+    function setCurrentUser(name) {
+      if (!name) return;
+      currentUser = name.trim();
+      try { localStorage.setItem('fjk_cnc_user', currentUser); } catch(e) {}
+      saveKnownUser(currentUser);
+      updateUserDisplay();
+    }
+
+    function updateUserDisplay() {
+      const badge = document.getElementById('current-user-badge');
+      const display = document.getElementById('current-user-display');
+      if (currentUser && localStorage.getItem('fjk_cnc_login') === 'authenticated') {
+        if (display) display.textContent = currentUser;
+        if (badge) badge.style.display = 'inline-flex';
+      } else if (badge) {
+        badge.style.display = 'none';
+      }
+    }
+
+    function renderUserChipsAndDatalist() {
+      const datalist = document.getElementById('known-users-list');
+      if (datalist) {
+        datalist.innerHTML = knownUsers.map(function(u) { return '<option value="' + escapeAttr(u) + '"></option>'; }).join('');
+      }
+
+      // Quick Chips im Modal
+      const chipsContainer = document.getElementById('recent-users-chips');
+      if (chipsContainer) {
+        chipsContainer.innerHTML = knownUsers.map(function(u) {
+          return '<button type="button" class="user-chip" data-user="' + escapeAttr(u) + '">👤 ' + escapeAttr(u) + '</button>';
+        }).join('');
+      }
+
+      // Quick Chips im Login-Overlay
+      const loginChips = document.getElementById('login-quick-chips');
+      if (loginChips) {
+        loginChips.innerHTML = knownUsers.map(function(u) {
+          return '<button type="button" class="user-chip" data-login-user="' + escapeAttr(u) + '" style="font-size:0.75rem; padding:0.25rem 0.5rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:4px; color:var(--text-base); cursor:pointer;">👤 ' + escapeAttr(u) + '</button>';
+        }).join('');
+      }
+    }
 
     function checkLogin() {
       const overlay = document.getElementById('login-overlay');
       const logoutBtn = document.getElementById('btn-logout');
-      if (localStorage.getItem('fjk_cnc_login') === 'authenticated') {
-        overlay.style.display = 'none';
+      const isAuth = localStorage.getItem('fjk_cnc_login') === 'authenticated';
+      if (isAuth) {
+        if (overlay) overlay.style.display = 'none';
         if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+        updateUserDisplay();
       } else {
-        overlay.style.display = 'flex';
+        if (overlay) overlay.style.display = 'flex';
         if (logoutBtn) logoutBtn.style.display = 'none';
+        const userInp = document.getElementById('login-username');
+        if (userInp && !userInp.value) userInp.value = currentUser || 'G. Palacios';
+        const passInp = document.getElementById('login-password');
+        if (passInp && !passInp.value) passInp.value = APP_PASSWORD;
       }
     }
 
-    document.getElementById('btn-login').addEventListener('click', function() {
-      if (document.getElementById('login-password').value === APP_PASSWORD) {
+    function handleLoginSubmit() {
+      let enteredPass = (document.getElementById('login-password').value || '').trim();
+      let enteredUser = (document.getElementById('login-username').value || '').trim();
+
+      // Wenn kein Passwort oder kein Benutzer eingetragen wurde, Standardwerte verwenden
+      if (!enteredPass) enteredPass = APP_PASSWORD;
+      if (!enteredUser) enteredUser = currentUser || 'G. Palacios';
+
+      if (enteredPass === APP_PASSWORD) {
+        setCurrentUser(enteredUser);
         localStorage.setItem('fjk_cnc_login', 'authenticated');
-        document.getElementById('login-error').style.display = 'none';
+        const errEl = document.getElementById('login-error');
+        if (errEl) errEl.style.display = 'none';
         checkLogin();
+        showToast('👋 Willkommen zurück, ' + currentUser + '!', 'success');
       } else {
-        document.getElementById('login-error').style.display = 'block';
+        const errEl = document.getElementById('login-error');
+        if (errEl) {
+          errEl.textContent = '❌ Falsches Passwort (Standard ist: ' + APP_PASSWORD + ')';
+          errEl.style.display = 'block';
+        }
       }
+    }
+
+    safeOn('btn-login', 'click', handleLoginSubmit);
+
+    safeOn('login-password', 'keypress', function(e) {
+      if (e.key === 'Enter') handleLoginSubmit();
+    });
+    safeOn('login-username', 'keypress', function(e) {
+      if (e.key === 'Enter') handleLoginSubmit();
     });
 
-    document.getElementById('login-password').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') document.getElementById('btn-login').click();
-    });
+    const loginChipsContainer = document.getElementById('login-quick-chips');
+    if (loginChipsContainer) {
+      loginChipsContainer.addEventListener('click', function(e) {
+        const chip = e.target.closest('[data-login-user]');
+        if (chip) {
+          const u = chip.getAttribute('data-login-user');
+          const userInp = document.getElementById('login-username');
+          if (userInp && u) {
+            userInp.value = u;
+            userInp.focus();
+          }
+        }
+      });
+    }
 
-    document.getElementById('btn-logout').addEventListener('click', function() {
+    safeOn('btn-logout', 'click', function() {
       localStorage.removeItem('fjk_cnc_login');
       location.reload();
     });
 
-    checkLogin();
+    // ==================== TIME FORMATTERS ====================
+    function formatDateTime(isoStr) {
+      if (!isoStr) return '—';
+      try {
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return isoStr;
+        return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+               d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr';
+      } catch(e) { return isoStr; }
+    }
 
-    /* ========== APP ========== */
+    function formatRelativeTime(isoStr) {
+      if (!isoStr) return '';
+      try {
+        const d = new Date(isoStr);
+        const now = new Date();
+        const diffSec = Math.floor((now - d) / 1000);
+        if (diffSec < 35) return 'Gerade eben';
+        if (diffSec < 3600) return 'vor ' + Math.max(1, Math.floor(diffSec / 60)) + ' Min.';
+        if (diffSec < 86400) return 'vor ' + Math.floor(diffSec / 3600) + ' Std.';
+        if (diffSec < 172800) return 'Gestern ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+      } catch(e) { return ''; }
+    }
+
+    /* ========== APP STATE ========== */
     const demoTools = [
-      { id: '1', name: 'VHM-Bohrer Ø6,0 mm lang', category: 'VHM-Bohrer', status: 'verfügbar', quantity: '3', icon: '🔩', image: '', link: '', diameter: '6.00', shank: '6.0', length: '57.0', flutes: '2', coating: 'TiAlN', material: 'VHM', manufacturer: 'Guhring', sku: '5511-6.000', magazine: 'T12', holder: 'HSK-A63', zLength: '142.50', coolant: 'Innenkühlung', machine: '', location: 'Schublade A1', notes: 'vc=120 m/min, fz=0.08 mm, für Stahl 1.4301' },
+      {
+        id: '1',
+        name: 'VHM-Bohrer Ø6,0 mm lang',
+        category: 'VHM-Bohrer',
+        status: 'verfügbar',
+        quantity: '3',
+        icon: '🔩',
+        image: '',
+        link: '',
+        diameter: '6.00',
+        shank: '6.0',
+        length: '57.0',
+        flutes: '2',
+        coating: 'TiAlN',
+        material: 'VHM',
+        manufacturer: 'Guhring',
+        sku: '5511-6.000',
+        magazine: 'T12',
+        holder: 'HSK-A63',
+        zLength: '142.50',
+        coolant: 'Innenkühlung',
+        machine: '',
+        location: 'Schublade A1',
+        notes: 'vc=120 m/min, fz=0.08 mm, für Stahl 1.4301',
+        createdAt: new Date().toISOString(),
+        createdBy: 'G. Palacios',
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'G. Palacios',
+        lastChangeSummary: 'Neu angelegt (3 Stk.)',
+        history: [{
+          timestamp: new Date().toISOString(),
+          userName: 'G. Palacios',
+          details: 'Initialer Bestand angelegt: 3 Stück in Schublade A1',
+          changes: ['Neu angelegt']
+        }]
+      }
     ];
 
     let tools = [];
+    let historyEntries = [];
     let deleteId = null;
     let currentEditId = null;
     let currentImageBase64 = '';
     let serverConfig = { key: '', binId: '' };
     let isSyncing = false;
+    let pollInterval = null;
 
     const statusClasses = {
       'neu': 'status-neu',
@@ -858,126 +1271,118 @@
       'nicht verfügbar': 'status-nicht-verfuegbar'
     };
 
-    // ==================== SERVER / SYNC ====================
-    function loadServerConfig() {
+    // ==================== PERSISTENCE & AUDIT LOG API ====================
+    async function fetchBackendData(silent) {
       try {
-        const stored = localStorage.getItem('fjk_cnc_server');
-        if (stored) serverConfig = JSON.parse(stored);
-      } catch(e) {}
-      updateSyncButton();
-    }
-    function saveServerConfig() {
-      try { localStorage.setItem('fjk_cnc_server', JSON.stringify(serverConfig)); } catch(e) {}
-      updateSyncButton();
-    }
-    function updateSyncButton() {
-      const btn = document.getElementById('btn-sync');
-      const text = document.getElementById('sync-text');
-      if (isSyncing) {
-        btn.className = 'sync-status syncing';
-        text.textContent = 'Sync...';
-      } else if (serverConfig.key && serverConfig.binId) {
-        btn.className = 'sync-status online';
-        text.textContent = 'Online';
-      } else if (serverConfig.key && !serverConfig.binId) {
-        btn.className = 'sync-status error';
-        text.textContent = 'Kein Bin';
-      } else {
-        btn.className = 'sync-status offline';
-        text.textContent = 'Offline';
+        // 1. Tools abrufen
+        const tRes = await fetch('/api/tools');
+        if (tRes.ok) {
+          const tData = await tRes.json();
+          if (Array.isArray(tData.tools) && tData.tools.length > 0) {
+            // Nur aktualisieren wenn der Benutzer nicht gerade im Bearbeitungsmodal tippt
+            const modalEl = document.getElementById('modal');
+            const isModalOpen = modalEl && modalEl.classList.contains('active');
+            if (!isModalOpen) {
+              tools = tData.tools;
+              saveToolsLocal();
+              renderStats();
+              renderGrid();
+            }
+          } else if (tools.length > 0) {
+            // Server hat noch keine Daten, mit lokalem Stand befüllen
+            await saveToolsToBackend();
+          }
+        }
+
+        // 2. Änderungsprotokoll abrufen
+        const hRes = await fetch('/api/history');
+        if (hRes.ok) {
+          const hData = await hRes.json();
+          if (Array.isArray(hData.history)) {
+            historyEntries = hData.history;
+            updateHistoryBadge();
+            const histModal = document.getElementById('history-modal');
+            if (histModal && histModal.classList.contains('active')) {
+              renderHistoryList();
+            }
+          }
+        }
+        updateSyncIndicator('online');
+      } catch(err) {
+        if (!silent) console.warn('Sync poll error:', err);
+        updateSyncIndicator('offline');
       }
     }
+
+    async function saveToolsToBackend() {
+      saveToolsLocal();
+      try {
+        const res = await fetch('/api/tools', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tools: tools, updatedAt: new Date().toISOString() })
+        });
+        if (res.ok) updateSyncIndicator('online');
+        else updateSyncIndicator('offline');
+      } catch(err) {
+        console.warn('Backend save error:', err);
+        updateSyncIndicator('offline');
+      }
+    }
+
+    async function recordAuditLog(action, toolName, toolId, details, changes) {
+      const entry = {
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+        timestamp: new Date().toISOString(),
+        userName: currentUser || 'Mitarbeiter',
+        action: action,
+        toolId: toolId || '',
+        toolName: toolName || '',
+        details: details || '',
+        changes: Array.isArray(changes) ? changes : [details]
+      };
+      historyEntries.unshift(entry);
+      if (historyEntries.length > 500) historyEntries.length = 500;
+      updateHistoryBadge();
+
+      try {
+        await fetch('/api/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(entry)
+        });
+      } catch(e) {
+        console.warn('Failed to record audit log on server:', e);
+      }
+    }
+
+    function updateSyncIndicator(status) {
+      const btn = document.getElementById('btn-sync');
+      const text = document.getElementById('sync-text');
+      if (!btn || !text) return;
+      if (status === 'online') {
+        btn.className = 'sync-status online';
+        text.textContent = 'Live Server';
+      } else if (status === 'syncing') {
+        btn.className = 'sync-status syncing';
+        text.textContent = 'Sync...';
+      } else {
+        btn.className = 'sync-status offline';
+        text.textContent = 'Offline (Lokal)';
+      }
+    }
+
     function showToast(msg, type) {
       type = type || 'info';
       const toast = document.getElementById('toast');
+      if (!toast) return;
       toast.textContent = msg;
       toast.className = 'toast ' + type;
       toast.classList.add('show');
       setTimeout(function() { toast.classList.remove('show'); }, 3500);
     }
 
-    async function syncToServer() {
-      if (!serverConfig.key || !serverConfig.binId) return;
-      isSyncing = true; updateSyncButton();
-      try {
-        const res = await fetch('https://api.jsonbin.io/v3/b/' + serverConfig.binId, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': serverConfig.key,
-            'X-Bin-Versioning': 'false'
-          },
-          body: JSON.stringify({ tools: tools, updatedAt: new Date().toISOString() })
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        showToast('✅ Auf Server gespeichert', 'success');
-      } catch(err) {
-        console.error('Sync error:', err);
-        showToast('❌ Server-Fehler: ' + err.message, 'error');
-      } finally {
-        isSyncing = false; updateSyncButton();
-      }
-    }
-
-    async function syncFromServer() {
-      if (!serverConfig.key || !serverConfig.binId) return;
-      isSyncing = true; updateSyncButton();
-      try {
-        const res = await fetch('https://api.jsonbin.io/v3/b/' + serverConfig.binId + '/latest', {
-          headers: { 'X-Master-Key': serverConfig.key }
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        if (data.record && Array.isArray(data.record.tools)) {
-          tools = data.record.tools;
-          saveToolsLocal();
-          renderStats(); renderGrid();
-          showToast('✅ Vom Server geladen', 'success');
-        } else {
-          showToast('⚠️ Keine Daten auf dem Server gefunden', 'warning');
-        }
-      } catch(err) {
-        console.error('Load error:', err);
-        showToast('❌ Laden fehlgeschlagen: ' + err.message, 'error');
-      } finally {
-        isSyncing = false; updateSyncButton();
-      }
-    }
-
-    async function createNewBin() {
-      if (!serverConfig.key) { showToast('Bitte zuerst X-Master-Key eingeben', 'warning'); return; }
-      isSyncing = true; updateSyncButton();
-      try {
-        const res = await fetch('https://api.jsonbin.io/v3/b', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': serverConfig.key,
-            'X-Bin-Private': 'false',
-            'X-Bin-Versioning': 'false'
-          },
-          body: JSON.stringify({ tools: tools, updatedAt: new Date().toISOString() })
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        serverConfig.binId = data.metadata.id;
-        saveServerConfig();
-        document.getElementById('server-bin').value = serverConfig.binId;
-        showToast('✅ Neuer Bin erstellt: ' + serverConfig.binId, 'success');
-        updateDisconnectButton();
-      } catch(err) {
-        showToast('❌ Bin erstellen fehlgeschlagen: ' + err.message, 'error');
-      } finally {
-        isSyncing = false; updateSyncButton();
-      }
-    }
-
-    function updateDisconnectButton() {
-      const btn = document.getElementById('btn-disconnect');
-      btn.style.display = (serverConfig.key || serverConfig.binId) ? 'inline-flex' : 'none';
-    }
-
-    // ==================== LOCAL STORAGE ====================
+    // ==================== LOCAL STORAGE FALLBACK ====================
     function loadTools() {
       try {
         const stored = localStorage.getItem('fjk_cnc_tools_v5');
@@ -995,12 +1400,14 @@
         }
       } catch(e) { tools = demoTools.slice(); }
     }
+
     function saveToolsLocal() {
       try { localStorage.setItem('fjk_cnc_tools_v5', JSON.stringify(tools)); } catch(e) {}
     }
+
     async function saveTools() {
       saveToolsLocal();
-      await syncToServer();
+      await saveToolsToBackend();
     }
 
     function defaultIconForCategory(cat) {
@@ -1056,6 +1463,19 @@
           : (tool.image ? '<img src="' + tool.image + '" class="card-image" alt="Werkzeugbild">' : '');
         const linkHtml = tool.link ? '<a href="' + esc(tool.link) + '" target="_blank" class="card-link">🔗 Hersteller-Link</a>' : '';
         const qtyDisplay = (tool.quantity !== undefined && tool.quantity !== null && tool.quantity !== '') ? tool.quantity : '1';
+
+        let auditText = '';
+        if (tool.updatedAt && tool.updatedBy) {
+          auditText = '🕒 ' + formatRelativeTime(tool.updatedAt) + ' von <span class="card-audit-user">' + esc(tool.updatedBy) + '</span>';
+          if (tool.lastChangeSummary) {
+            const shortSum = tool.lastChangeSummary.length > 40 ? tool.lastChangeSummary.substr(0, 40) + '…' : tool.lastChangeSummary;
+            auditText += ' · <span style="opacity:0.85;" title="' + esc(tool.lastChangeSummary) + '">' + esc(shortSum) + '</span>';
+          }
+        } else if (tool.createdAt && tool.createdBy) {
+          auditText = '🕒 Erstellt von <span class="card-audit-user">' + esc(tool.createdBy) + '</span>';
+        }
+        const auditHtml = auditText ? '<div class="card-audit" title="' + esc(tool.lastChangeSummary || '') + '">' + auditText + '</div>' : '';
+
         return `
         <div class="card">
           <div class="card-header">
@@ -1086,6 +1506,7 @@
             ${tool.machine ? '🏭 ' + esc(tool.machine) + '<br>' : ''}
             ${linkHtml}
           </div>
+          ${auditHtml}
           <div class="card-footer">
             <span style="font-size:0.75rem; color:var(--text-muted);">${esc(tool.manufacturer || '—')}</span>
             <div class="card-actions">
@@ -1110,11 +1531,23 @@
       clone.magazine = '';
       clone.machine = '';
       clone.location = '';
+      clone.createdAt = new Date().toISOString();
+      clone.createdBy = currentUser || 'Mitarbeiter';
+      clone.updatedAt = clone.createdAt;
+      clone.updatedBy = clone.createdBy;
+      clone.lastChangeSummary = 'Kopie von ' + original.name;
+      clone.history = [{
+        timestamp: clone.createdAt,
+        userName: clone.createdBy,
+        details: 'Kopiert von ' + original.name + ' (' + (clone.quantity || 1) + ' Stk.)',
+        changes: ['Kopiert']
+      }];
       tools.push(clone);
-      saveToolsLocal();
+      saveTools();
       renderStats();
       renderGrid();
-      showToast('✅ Werkzeug kopiert: ' + clone.name, 'success');
+      recordAuditLog('Kopiert', clone.name, clone.id, 'Kopie von ' + original.name + ' (' + (clone.quantity || 1) + ' Stk.)', ['Kopiert']);
+      showToast('✅ Werkzeug kopiert von ' + (currentUser || 'Mitarbeiter'), 'success');
     }
 
     // ==================== IMAGE UPLOAD ====================
@@ -1136,24 +1569,28 @@
       }
     }
 
-    imageUploadArea.addEventListener('click', function() { imageInput.click(); });
-    imageUploadArea.addEventListener('dragover', function(e) { e.preventDefault(); imageUploadArea.style.borderColor = 'var(--primary)'; });
-    imageUploadArea.addEventListener('dragleave', function(e) { e.preventDefault(); imageUploadArea.style.borderColor = ''; });
-    imageUploadArea.addEventListener('drop', function(e) {
-      e.preventDefault(); imageUploadArea.style.borderColor = '';
-      if (e.dataTransfer.files.length > 0) handleImageFile(e.dataTransfer.files[0]);
-    });
-    imageInput.addEventListener('change', function(e) { if (e.target.files.length > 0) handleImageFile(e.target.files[0]); });
+    if (imageUploadArea && imageInput) {
+      imageUploadArea.addEventListener('click', function() { imageInput.click(); });
+      imageUploadArea.addEventListener('dragover', function(e) { e.preventDefault(); imageUploadArea.style.borderColor = 'var(--primary)'; });
+      imageUploadArea.addEventListener('dragleave', function(e) { e.preventDefault(); imageUploadArea.style.borderColor = ''; });
+      imageUploadArea.addEventListener('drop', function(e) {
+        e.preventDefault(); imageUploadArea.style.borderColor = '';
+        if (e.dataTransfer && e.dataTransfer.files.length > 0) handleImageFile(e.dataTransfer.files[0]);
+      });
+      imageInput.addEventListener('change', function(e) { if (e.target.files.length > 0) handleImageFile(e.target.files[0]); });
+    }
 
     function handleImageFile(file) {
-      if (!file.type.startsWith('image/')) { alert('Bitte nur Bilddateien hochladen (JPG, PNG, GIF, etc.)'); return; }
-      if (file.size > 2 * 1024 * 1024) { alert('Das Bild ist zu groß. Maximal 2 MB erlaubt.'); return; }
+      if (!file.type.startsWith('image/')) { showToast('⚠️ Bitte nur Bilddateien hochladen (JPG, PNG, GIF, etc.)', 'warning'); return; }
+      if (file.size > 2 * 1024 * 1024) { showToast('⚠️ Das Bild ist zu groß. Maximal 2 MB erlaubt.', 'warning'); return; }
       const reader = new FileReader();
       reader.onload = function(e) { showImagePreview(e.target.result); };
       reader.readAsDataURL(file);
     }
 
-    btnRemoveImage.addEventListener('click', function(e) { e.stopPropagation(); showImagePreview(''); imageInput.value = ''; });
+    if (btnRemoveImage && imageInput) {
+      btnRemoveImage.addEventListener('click', function(e) { e.stopPropagation(); showImagePreview(''); imageInput.value = ''; });
+    }
 
     // ==================== MODALS ====================
     function openModal(data) {
@@ -1191,6 +1628,37 @@
         document.getElementById('tool-image-url').value = data.imageUrl || '';
         printBtn.style.display = 'inline-flex';
         labelBtn.style.display = 'inline-flex';
+
+        // Historie für dieses Werkzeug anzeigen
+        const histSection = document.getElementById('tool-history-section');
+        const histList = document.getElementById('tool-history-list');
+        const histMeta = document.getElementById('tool-history-meta');
+        if (histSection && histList) {
+          let list = (data.history && data.history.length) ? data.history.slice() : [];
+          // Wenn in data.history nichts steht, aus globalem Log abrufen
+          if (!list.length && historyEntries.length) {
+            list = historyEntries.filter(function(h) { return h.toolId === data.id; });
+          }
+          if (list && list.length) {
+            histSection.style.display = 'block';
+            if (histMeta) histMeta.textContent = list.length + ' Änderung(en) protokolliert';
+            histList.innerHTML = list.map(function(h) {
+              const userStr = esc(h.userName || 'Mitarbeiter');
+              const timeStr = formatDateTime(h.timestamp);
+              const relStr = formatRelativeTime(h.timestamp);
+              const detailsStr = esc(h.details || (Array.isArray(h.changes) ? h.changes.join(' · ') : 'Geändert'));
+              return '<div style="padding:0.4rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap;">' +
+                  '<span style="font-weight:600; color:var(--text-title); font-size:0.75rem;">👤 ' + userStr + '</span>' +
+                  '<span style="color:var(--text-muted); font-size:0.7rem;">' + timeStr + ' (' + relStr + ')</span>' +
+                '</div>' +
+                '<div style="color:var(--text-base); margin-top:0.2rem; font-size:0.75rem;">' + detailsStr + '</div>' +
+              '</div>';
+            }).join('');
+          } else {
+            histSection.style.display = 'none';
+          }
+        }
       } else {
         currentEditId = null;
         document.getElementById('modal-title').textContent = 'Neues CNC-Werkzeug';
@@ -1201,6 +1669,8 @@
         showImagePreview('');
         printBtn.style.display = 'none';
         labelBtn.style.display = 'none';
+        const histSection = document.getElementById('tool-history-section');
+        if (histSection) histSection.style.display = 'none';
       }
       updateIconPreview();
       modal.classList.add('active');
@@ -1369,18 +1839,116 @@
       printHtmlDoc(labelHtml);
     }
 
+    // ==================== AUDIT HISTORY MODAL ====================
+    function updateHistoryBadge() {
+      const badge = document.getElementById('history-count-badge');
+      if (badge) badge.textContent = historyEntries.length;
+    }
+
+    function populateHistoryUserFilter() {
+      const select = document.getElementById('history-filter-user');
+      if (!select) return;
+      const currentVal = select.value;
+      const users = Array.from(new Set(historyEntries.map(function(h) { return h.userName; }).filter(Boolean))).sort();
+      let optionsHtml = '<option value="all">Alle Mitarbeiter (' + users.length + ')</option>';
+      users.forEach(function(u) {
+        optionsHtml += '<option value="' + esc(u) + '">' + esc(u) + '</option>';
+      });
+      select.innerHTML = optionsHtml;
+      if (users.includes(currentVal)) select.value = currentVal;
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('history-list-container');
+      const totalCountEl = document.getElementById('history-total-count');
+      if (!container) return;
+
+      const search = (document.getElementById('history-search').value || '').toLowerCase().trim();
+      const filterUser = document.getElementById('history-filter-user').value;
+      const filterAction = document.getElementById('history-filter-action').value;
+
+      const filtered = historyEntries.filter(function(h) {
+        if (filterUser !== 'all' && h.userName !== filterUser) return false;
+        if (filterAction !== 'all' && h.action !== filterAction) return false;
+        if (search) {
+          const match = (h.userName || '').toLowerCase().includes(search) ||
+                        (h.toolName || '').toLowerCase().includes(search) ||
+                        (h.details || '').toLowerCase().includes(search) ||
+                        (h.action || '').toLowerCase().includes(search);
+          if (!match) return false;
+        }
+        return true;
+      });
+
+      if (totalCountEl) {
+        totalCountEl.textContent = filtered.length + ' von ' + historyEntries.length + ' Einträgen angezeigt';
+      }
+
+      if (!filtered.length) {
+        container.innerHTML = '<div style="padding:2.5rem; text-align:center; color:var(--text-muted);">' +
+          '<div style="font-size:2rem; margin-bottom:0.5rem;">📜</div>' +
+          'Keine passenden Protokolleinträge gefunden.</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(function(h) {
+        const actionStr = (h.action || '').toLowerCase();
+        let badgeClass = 'bearbeitet';
+        if (actionStr.includes('neu')) badgeClass = 'neu';
+        else if (actionStr.includes('kopier')) badgeClass = 'kopiert';
+        else if (actionStr.includes('lösch')) badgeClass = 'gelöscht';
+
+        return '<div class="history-item">' +
+          '<div class="history-item-header">' +
+            '<div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">' +
+              '<span class="history-badge ' + badgeClass + '">' + esc(h.action || 'Geändert') + '</span>' +
+              '<span class="history-item-user">👤 ' + esc(h.userName || 'Unbekannt') + '</span>' +
+              '<span style="font-weight:600; color:var(--primary);">' + esc(h.toolName || 'Werkzeug') + '</span>' +
+            '</div>' +
+            '<div class="history-item-time" title="' + formatDateTime(h.timestamp) + '">' +
+              '🕒 ' + formatDateTime(h.timestamp) + ' <span style="opacity:0.75;">(' + formatRelativeTime(h.timestamp) + ')</span>' +
+            '</div>' +
+          '</div>' +
+          (h.details ? '<div class="history-item-details">' + esc(h.details) + '</div>' : '') +
+        '</div>';
+      }).join('');
+    }
+
+    function openHistoryModal() {
+      populateHistoryUserFilter();
+      renderHistoryList();
+      document.getElementById('history-modal').classList.add('active');
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('history-modal').classList.remove('active');
+    }
+
+    // ==================== USER SWITCH MODAL ====================
+    function openUserSwitchModal() {
+      const input = document.getElementById('user-switch-input');
+      if (input) input.value = currentUser || '';
+      renderUserChipsAndDatalist();
+      document.getElementById('user-switch-modal').classList.add('active');
+      if (input) setTimeout(function() { input.focus(); input.select(); }, 50);
+    }
+
+    function closeUserSwitchModal() {
+      document.getElementById('user-switch-modal').classList.remove('active');
+    }
+
     // ==================== EVENT LISTENERS ====================
-    document.getElementById('tools-grid').addEventListener('click', function(e) {
+    safeOn('tools-grid', 'click', function(e) {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
       const id = btn.getAttribute('data-id');
       const action = btn.getAttribute('data-action');
       if (action === 'edit') { const tool = tools.find(function(t) { return t.id === id; }); if (tool) openModal(tool); }
-      else if (action === 'copy') { copyTool(id); } // NEU: Kopieren
+      else if (action === 'copy') { copyTool(id); }
       else if (action === 'delete') { deleteId = id; openDeleteModal(); }
     });
 
-    document.getElementById('tool-form').addEventListener('submit', function(e) {
+    safeOn('tool-form', 'submit', function(e) {
       e.preventDefault();
       const id = document.getElementById('tool-id').value;
       const data = {
@@ -1409,67 +1977,209 @@
         quantity: document.getElementById('tool-quantity').value.trim() || '1',
         notes: document.getElementById('tool-notes').value.trim()
       };
-      if (id) { const idx = tools.findIndex(function(t) { return t.id === id; }); if (idx !== -1) tools[idx] = data; }
-      else tools.push(data);
+
+      if (id) {
+        const idx = tools.findIndex(function(t) { return t.id === id; });
+        if (idx !== -1) {
+          const oldTool = tools[idx];
+          const changes = [];
+          if (oldTool.name !== data.name) changes.push('Name: "' + oldTool.name + '" ➔ "' + data.name + '"');
+          if ((oldTool.quantity || '1') !== (data.quantity || '1')) changes.push('Stückzahl: ' + (oldTool.quantity || '1') + ' ➔ ' + (data.quantity || '1') + ' Stk.');
+          if (oldTool.status !== data.status) changes.push('Status: ' + oldTool.status + ' ➔ ' + data.status);
+          if ((oldTool.location || '') !== (data.location || '')) changes.push('Lagerort: ' + (oldTool.location || '—') + ' ➔ ' + (data.location || '—'));
+          if ((oldTool.machine || '') !== (data.machine || '')) changes.push('Maschine: ' + (oldTool.machine || '—') + ' ➔ ' + (data.machine || '—'));
+          if ((oldTool.magazine || '') !== (data.magazine || '')) changes.push('Magazin: ' + (oldTool.magazine || '—') + ' ➔ ' + (data.magazine || '—'));
+          if ((oldTool.diameter || '') !== (data.diameter || '')) changes.push('Ø: ' + (oldTool.diameter || '—') + ' ➔ ' + data.diameter + ' mm');
+          if ((oldTool.zLength || '') !== (data.zLength || '')) changes.push('Z-Länge: ' + (oldTool.zLength || '—') + ' ➔ ' + (data.zLength || '—') + ' mm');
+          if ((oldTool.coolant || '') !== (data.coolant || '')) changes.push('Kühlung: ' + (oldTool.coolant || '—') + ' ➔ ' + data.coolant);
+          if ((oldTool.holder || '') !== (data.holder || '')) changes.push('Aufnahme: ' + (oldTool.holder || '—') + ' ➔ ' + (data.holder || '—'));
+          if ((oldTool.category || '') !== (data.category || '')) changes.push('Kategorie: ' + oldTool.category + ' ➔ ' + data.category);
+          if ((oldTool.notes || '') !== (data.notes || '')) changes.push('Notizen aktualisiert');
+
+          const summary = changes.length ? changes.join(' · ') : 'Werkzeugdaten überprüft';
+          data.createdAt = oldTool.createdAt || new Date().toISOString();
+          data.createdBy = oldTool.createdBy || (currentUser || 'Mitarbeiter');
+          data.updatedAt = new Date().toISOString();
+          data.updatedBy = currentUser || 'Mitarbeiter';
+          data.lastChangeSummary = summary;
+          data.history = Array.isArray(oldTool.history) ? oldTool.history.slice() : [];
+          data.history.unshift({
+            timestamp: data.updatedAt,
+            userName: data.updatedBy,
+            details: summary,
+            changes: changes
+          });
+          if (data.history.length > 25) data.history.length = 25;
+          tools[idx] = data;
+          recordAuditLog('Bearbeitet', data.name, data.id, summary, changes);
+          showToast('✅ Werkzeug aktualisiert von ' + (currentUser || 'Mitarbeiter'), 'success');
+        }
+      } else {
+        data.createdAt = new Date().toISOString();
+        data.createdBy = currentUser || 'Mitarbeiter';
+        data.updatedAt = data.createdAt;
+        data.updatedBy = data.createdBy;
+        const sum = 'Neu angelegt (' + data.category + ', ' + data.quantity + ' Stk. in ' + (data.location || 'Lager') + ')';
+        data.lastChangeSummary = sum;
+        data.history = [{
+          timestamp: data.createdAt,
+          userName: data.createdBy,
+          details: sum,
+          changes: ['Neu angelegt']
+        }];
+        tools.push(data);
+        recordAuditLog('Neu angelegt', data.name, data.id, sum, ['Neu angelegt']);
+        showToast('✅ Neues Werkzeug angelegt von ' + (currentUser || 'Mitarbeiter'), 'success');
+      }
       saveTools(); renderStats(); renderGrid(); closeModal();
     });
 
-    document.getElementById('btn-confirm-delete').addEventListener('click', function() {
-      if (deleteId) { tools = tools.filter(function(t) { return t.id !== deleteId; }); saveTools(); renderStats(); renderGrid(); }
+    safeOn('btn-confirm-delete', 'click', function() {
+      if (deleteId) {
+        const deletedTool = tools.find(function(t) { return t.id === deleteId; });
+        if (deletedTool) {
+          const detail = 'Werkzeug gelöscht (' + deletedTool.name + ', ehemals ' + (deletedTool.quantity || 1) + ' Stk.)';
+          recordAuditLog('Gelöscht', deletedTool.name, deletedTool.id, detail, ['Gelöscht']);
+          showToast('🗑️ Werkzeug gelöscht von ' + (currentUser || 'Mitarbeiter'), 'info');
+        }
+        tools = tools.filter(function(t) { return t.id !== deleteId; });
+        saveTools(); renderStats(); renderGrid();
+      }
       closeDeleteModal();
     });
 
-    document.getElementById('btn-add').addEventListener('click', function() { openModal(null); });
-    document.getElementById('modal-close').addEventListener('click', closeModal);
-    document.getElementById('btn-cancel').addEventListener('click', closeModal);
-    document.getElementById('modal-backdrop').addEventListener('click', closeModal);
-    document.getElementById('btn-cancel-delete').addEventListener('click', closeDeleteModal);
-    document.getElementById('delete-backdrop').addEventListener('click', closeDeleteModal);
-    document.getElementById('search-input').addEventListener('input', renderGrid);
-    document.getElementById('filter-status').addEventListener('change', renderGrid);
-    document.getElementById('filter-category').addEventListener('change', renderGrid);
-    document.getElementById('tool-icon').addEventListener('input', updateIconPreview);
-    document.getElementById('tool-category').addEventListener('change', function() {
+    safeOn('btn-add', 'click', function() { openModal(null); });
+    safeOn('modal-close', 'click', closeModal);
+    safeOn('btn-cancel', 'click', closeModal);
+    safeOn('modal-backdrop', 'click', closeModal);
+    safeOn('btn-cancel-delete', 'click', closeDeleteModal);
+    safeOn('delete-backdrop', 'click', closeDeleteModal);
+    safeOn('search-input', 'input', renderGrid);
+    safeOn('filter-status', 'change', renderGrid);
+    safeOn('filter-category', 'change', renderGrid);
+    safeOn('tool-icon', 'input', updateIconPreview);
+    safeOn('tool-category', 'change', function() {
       const iconInput = document.getElementById('tool-icon');
-      if (!iconInput.value.trim()) { iconInput.value = defaultIconForCategory(this.value); updateIconPreview(); }
+      if (iconInput && !iconInput.value.trim()) { iconInput.value = defaultIconForCategory(this.value); updateIconPreview(); }
     });
-    document.getElementById('btn-print').addEventListener('click', printDataSheet);
-    document.getElementById('btn-print-label').addEventListener('click', printLabel);
+    safeOn('btn-print', 'click', printDataSheet);
+    safeOn('btn-print-label', 'click', printLabel);
+
+    // Audit History Modal Events
+    safeOn('btn-open-history', 'click', openHistoryModal);
+    safeOn('btn-history', 'click', openHistoryModal);
+    safeOn('history-close', 'click', closeHistoryModal);
+    safeOn('history-modal-close', 'click', closeHistoryModal);
+    safeOn('history-backdrop', 'click', closeHistoryModal);
+    safeOn('btn-history-close', 'click', closeHistoryModal);
+    safeOn('btn-refresh-history', 'click', function() {
+      fetchBackendData(false);
+      renderHistoryList();
+      showToast('🔄 Protokoll aktualisiert', 'info');
+    });
+    safeOn('history-search', 'input', renderHistoryList);
+    safeOn('history-filter-user', 'change', renderHistoryList);
+    safeOn('history-filter-action', 'change', renderHistoryList);
+    safeOn('btn-clear-history-filter', 'click', function() {
+      const s = document.getElementById('history-search'); if (s) s.value = '';
+      const u = document.getElementById('history-filter-user'); if (u) u.value = 'all';
+      const a = document.getElementById('history-filter-action'); if (a) a.value = 'all';
+      renderHistoryList();
+    });
+    safeOn('btn-clear-history-search', 'click', function() {
+      const s = document.getElementById('history-search'); if (s) s.value = '';
+      const u = document.getElementById('history-filter-user'); if (u) u.value = 'all';
+      const a = document.getElementById('history-filter-action'); if (a) a.value = 'all';
+      renderHistoryList();
+    });
+
+    // User Switch Modal Events
+    safeOn('current-user-badge', 'click', openUserSwitchModal);
+    safeOn('btn-switch-user', 'click', openUserSwitchModal);
+    safeOn('user-switch-close', 'click', closeUserSwitchModal);
+    safeOn('user-switch-backdrop', 'click', closeUserSwitchModal);
+    safeOn('user-switch-cancel', 'click', closeUserSwitchModal);
+    safeOn('btn-cancel-user-switch', 'click', closeUserSwitchModal);
+    safeOn('user-switch-form', 'submit', function(e) {
+      e.preventDefault();
+      const val = (document.getElementById('user-switch-input').value || '').trim();
+      if (val) {
+        setCurrentUser(val);
+        closeUserSwitchModal();
+        showToast('👤 Aktiver Mitarbeiter gewechselt zu: ' + val, 'success');
+      }
+    });
+    safeOn('recent-users-chips', 'click', function(e) {
+      const chip = e.target.closest('[data-user]');
+      if (chip) {
+        const u = chip.getAttribute('data-user');
+        if (u) {
+          const inp = document.getElementById('user-switch-input');
+          if (inp) inp.value = u;
+          setCurrentUser(u);
+          closeUserSwitchModal();
+          showToast('👤 Aktiver Mitarbeiter gewechselt zu: ' + u, 'success');
+        }
+      }
+    });
 
     // Server modal events
-    document.getElementById('btn-sync').addEventListener('click', openServerModal);
-    document.getElementById('server-modal-close').addEventListener('click', closeServerModal);
-    document.getElementById('server-backdrop').addEventListener('click', closeServerModal);
-    document.getElementById('btn-server-cancel').addEventListener('click', closeServerModal);
-    document.getElementById('btn-create-bin').addEventListener('click', createNewBin);
-    document.getElementById('btn-disconnect').addEventListener('click', function() {
-      serverConfig = { key: '', binId: '' };
-      saveServerConfig();
-      document.getElementById('server-key').value = '';
-      document.getElementById('server-bin').value = '';
-      updateDisconnectButton();
-      showToast('🔌 Server-Verbindung getrennt', 'info');
+    safeOn('btn-sync', 'click', openServerModal);
+    safeOn('server-close', 'click', closeServerModal);
+    safeOn('server-modal-close', 'click', closeServerModal);
+    safeOn('server-backdrop', 'click', closeServerModal);
+    safeOn('server-cancel', 'click', closeServerModal);
+    safeOn('btn-server-cancel', 'click', closeServerModal);
+
+    safeOn('btn-force-sync', 'click', async function() {
+      const btn = document.getElementById('btn-force-sync');
+      if (btn) btn.textContent = '⏳ Synchronisiere...';
+      await fetchBackendData(false);
+      if (btn) btn.textContent = '🔄 Jetzt synchronisieren';
+      showToast('✅ Daten erfolgreich mit Server abgeglichen', 'success');
     });
-    document.getElementById('server-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      serverConfig.key = document.getElementById('server-key').value.trim();
-      serverConfig.binId = document.getElementById('server-bin').value.trim();
-      saveServerConfig();
-      closeServerModal();
-      if (serverConfig.binId) {
-        syncFromServer();
-      } else if (serverConfig.key) {
-        showToast('✅ Key gespeichert. Klicke "Neuen Bin erstellen" um einen Speicherort zu erzeugen.', 'success');
+
+    safeOn('btn-download-backup', 'click', function() {
+      try {
+        const backup = {
+          app: 'FJK CNC-Werkzeugverwaltung',
+          version: '5.0',
+          exportDate: new Date().toISOString(),
+          exportedBy: currentUser || 'Mitarbeiter',
+          totalTools: tools.length,
+          tools: tools,
+          history: historyEntries
+        };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const dateStr = new Date().toISOString().slice(0, 10);
+        a.download = 'fjk_cnc_werkzeuge_backup_' + dateStr + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('💾 Backup heruntergeladen', 'success');
+      } catch (err) {
+        showToast('❌ Fehler beim Erstellen des Backups', 'warning');
       }
     });
 
     // ==================== INIT ====================
-    loadServerConfig();
+    checkLogin();
     loadTools();
+    updateUserDisplay();
+    renderUserChipsAndDatalist();
     renderStats();
     renderGrid();
-    if (serverConfig.key && serverConfig.binId) {
-      syncFromServer();
+
+    // Initiale Synchronisation mit dem Server & Polling für Mehrbenutzerbetrieb
+    fetchBackendData(true);
+    if (!pollInterval) {
+      pollInterval = setInterval(function() {
+        fetchBackendData(true);
+      }, 10000); // Alle 10 Sekunden automatisch aktualisieren
     }
   });
   </script>
