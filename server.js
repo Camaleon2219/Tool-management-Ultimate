@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { GoogleGenAI } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -483,6 +484,286 @@ exit
   res.setHeader('Content-Type', 'application/x-bat');
   res.setHeader('Content-Disposition', 'attachment; filename="FJK_CNC_Starten.bat"');
   res.send(batContent);
+});
+
+// ==========================================
+// GEMINI AI INTEGRATION (ZEICHNUNGSANALYSE & RÜSTHELFER)
+// ==========================================
+let geminiClient = null;
+function getGeminiClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY ist auf dem Server nicht hinterlegt. Bitte hinterlege den API-Schlüssel in den Settings.');
+  }
+  if (!geminiClient) {
+    geminiClient = new GoogleGenAI({
+      apiKey: apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build'
+        }
+      }
+    });
+  }
+  return geminiClient;
+}
+
+app.get('/api/ai/status', (req, res) => {
+  const hasKey = !!process.env.GEMINI_API_KEY;
+  res.json({
+    available: hasKey,
+    model: 'gemini-3.8-flash'
+  });
+});
+
+app.post('/api/ai/analyze-drawing', async (req, res) => {
+  try {
+    const { image, notes, tools: clientTools } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: 'Kein Zeichnungsbild übermittelt.' });
+    }
+
+    const ai = getGeminiClient();
+
+    // Extrahiere Base64 Daten und MimeType
+    const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return res.status(400).json({ error: 'Ungültiges Base64-Bild- oder PDF-Format.' });
+    }
+    const mimeType = matches[1];
+    const base64Data = matches[2];
+
+    const toolsList = Array.isArray(clientTools) && clientTools.length > 0 ? clientTools : readTools();
+
+    const formattedTools = toolsList.map(t => {
+      const parts = [
+        `[ID: ${t.id}] "${t.name}"`,
+        `Kategorie: ${t.category || '-'}`,
+        `Ø: ${t.diameter ? t.diameter + ' mm' : '-'}`,
+        `Schaft: ${t.shank ? t.shank + ' mm' : '-'}`,
+        `Nutzlänge: ${t.length ? t.length + ' mm' : '-'}`,
+        `Zähne: ${t.flutes || '-'}`,
+        `Beschichtung: ${t.coating || '-'}`,
+        `Material: ${t.material || '-'}`,
+        `Magazin/Platz: ${t.magazine || '-'}`,
+        `Lagerort: ${t.location || '-'}`,
+        `Status: ${t.status || 'verfügbar'}`,
+        `Bestand: ${t.quantity || 1}`,
+        `Notizen: ${t.notes || '-'}`
+      ];
+      return parts.join(' | ');
+    }).join('\n');
+
+    const promptText = `Du bist ein erfahrener Zerspanungsmechaniker und CNC-Fertigungsspezialist (Fräsen & Drehen).
+Analysiere die beigefügte technische Zeichnung / Konstruktionsskizze detailgenau und erstelle eine praxisnahe Werkzeug-Rüstliste basierend auf unserem realen Werkzeugbestand.
+
+AKTUELLER WERKZEUGBESTAND IM LAGER:
+${formattedTools.length > 0 ? formattedTools : '(Keine Werkzeuge im Lager hinterlegt)'}
+
+${notes ? `ZUSÄTZLICHE HINWEISE / MASCHINENANGABEN VOM BEDIENER:\n"${notes}"\n` : ''}
+
+AUFGABEN:
+1. Zeichnungsdaten erfassen:
+   - Bauteilname / Benennung (falls erkennbar)
+   - Zeichnungsnummer / Sachnummer
+   - Werkstoff / Material (z. B. 1.4301 Edelstahl, AlMgSi1 Aluminium, C45, POM, etc.)
+   - Rohteilmaße / Hauptabmessungen (L x B x H bzw. Ø x L)
+   - Kurze verständliche Zusammenfassung des Teils
+
+2. Bearbeitungsmerkmale (Features) ermitteln:
+   - Alle Bohrungen (z.B. Ø5.0, Ø6.8, Durchgang/Sackloch, Flachsenkung 90°)
+   - Gewinde (z.B. M6, M8, Feingewinde)
+   - Nuten, Taschen, Konturen mit Innenradien R (z.B. R3 Innenradius erfordert Fräser maximal Ø6)
+   - Planflächen, Fasen (z.B. 45° Kantenbrechen)
+   - Passungen & Toleranzen (z.B. H7, g6)
+
+3. Werkzeugabgleich & Rüstliste (Tool Matching):
+   - Wähle für JEDES Merkmal das am besten passende Werkzeug aus unserem oben gelisteten Werkzeugbestand aus!
+   - Gib exakt die "matchedToolId" und "matchedToolName" aus dem Bestand an.
+   - Gib an, wo das Werkzeug liegt (location und magazine).
+   - Kennzeichne, ob es sofort verfügbar ist.
+   - WICHTIG: Falls ein Werkzeug (z.B. Reibahle, spezieller Kernlochbohrer oder Gewindebohrer) NICHT im Bestand existiert:
+     * Setze "isAvailable": false, "matchedToolId": null, "matchedToolName": null
+     * Gib bei "recommendedAlternative" die genaue Werkzeugempfehlung an (z.B. "VHM-Bohrer Ø6.8 mm für M8").
+
+4. Fehlende Werkzeuge:
+   - Fasse alle Werkzeuge zusammen, die für dieses Teil im Betrieb fehlen, mit Dringlichkeit.
+
+5. Fertigungsfolge (Arbeitsplan Schritt 1 bis N):
+   - Logische Reihenfolge (z.B. 1. Planfräsen -> 2. Kontur schruppen -> 3. NC-Anbohren -> 4. Bohren -> 5. Gewinde -> 6. Schlichten -> 7. Fasen).
+
+6. Praxistipps & Schnittwerte:
+   - Empfohlenes Kühlmittel
+   - Schnittgeschwindigkeiten (vc) und Drehzahlen / Vorschübe für den ermittelten Werkstoff
+   - Spannhinweise & Gratvermeidung
+
+Antworte AUSSCHLIESSLICH mit gültigem JSON nach folgendem Format:
+{
+  "partInfo": {
+    "name": "string",
+    "drawingNumber": "string",
+    "material": "string",
+    "dimensions": "string",
+    "summary": "string"
+  },
+  "features": [
+    {
+      "type": "Bohrung | Gewinde | Tasche | Kontur | Planfläche | Fase | Passung",
+      "description": "string",
+      "dimensions": "string"
+    }
+  ],
+  "toolMatches": [
+    {
+      "operation": "string",
+      "matchedToolId": "string oder null",
+      "matchedToolName": "string oder null",
+      "isAvailable": true,
+      "location": "string",
+      "status": "string",
+      "recommendedAlternative": "string",
+      "notes": "string"
+    }
+  ],
+  "missingTools": [
+    {
+      "neededFor": "string",
+      "toolRecommendation": "string",
+      "urgency": "hoch | mittel | niedrig"
+    }
+  ],
+  "machiningSteps": [
+    {
+      "stepNumber": 1,
+      "operation": "string",
+      "tool": "string",
+      "parameters": "string",
+      "comment": "string"
+    }
+  ],
+  "cuttingTips": {
+    "coolant": "string",
+    "clamping": "string",
+    "generalAdvice": "string"
+  }
+}`;
+
+    // Modell-Kaskade bei hoher Serverlast / 503 Spikes
+    const candidateModels = [
+      'gemini-flash-latest',
+      'gemini-3.8-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-3.1-pro-preview'
+    ];
+
+    let response = null;
+    let lastApiError = null;
+
+    for (const modelName of candidateModels) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          console.log(`Starte Zeichnungsanalyse mit ${modelName} (Versuch ${attempt})...`);
+          response = await ai.models.generateContent({
+            model: modelName,
+            contents: {
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data
+                  }
+                },
+                {
+                  text: promptText
+                }
+              ]
+            },
+            config: {
+              responseMimeType: 'application/json',
+              temperature: 0.2
+            }
+          });
+
+          if (response && response.text) {
+            console.log(`Erfolgreich geantwortet von Modell: ${modelName}`);
+            break;
+          }
+        } catch (apiErr) {
+          lastApiError = apiErr;
+          const errStr = (apiErr.message || '') + ' ' + JSON.stringify(apiErr);
+          const isHighDemand = errStr.includes('503') ||
+                               errStr.includes('UNAVAILABLE') ||
+                               errStr.includes('high demand') ||
+                               errStr.includes('429') ||
+                               errStr.includes('RESOURCE_EXHAUSTED');
+
+          console.warn(`Modell ${modelName} Versuch ${attempt} nicht verfügbar:`, apiErr.message || apiErr);
+
+          if (isHighDemand && attempt === 1) {
+            // 750ms Wartezeit vor Retry
+            await new Promise(r => setTimeout(r, 750));
+            continue;
+          }
+          // Wechsel zum nächsten Modell in der Kaskade
+          break;
+        }
+      }
+      if (response && response.text) {
+        break;
+      }
+    }
+
+    if (!response || !response.text) {
+      throw lastApiError || new Error('Die KI-Modelle sind im Moment vorübergehend ausgelastet.');
+    }
+
+    let resultText = (response.text || '').trim();
+    if (resultText.startsWith('```json')) {
+      resultText = resultText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (resultText.startsWith('```')) {
+      resultText = resultText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+
+    let parsedResult;
+    try {
+      parsedResult = JSON.parse(resultText);
+    } catch (parseErr) {
+      console.error('Failed to parse Gemini JSON output:', parseErr, resultText);
+      return res.status(500).json({
+        error: 'Die KI hat kein valides JSON-Ergebnis geliefert. Bitte erneut versuchen.',
+        raw: resultText
+      });
+    }
+
+    res.json({
+      success: true,
+      analysis: parsedResult
+    });
+
+  } catch (err) {
+    console.error('Fehler bei der KI-Zeichnungsanalyse:', err);
+    let userMsg = err.message || 'Fehler bei der KI-Verarbeitung';
+
+    // Falls die Fehlermeldung ein rohes JSON-Objekt ist, extrahiere die eigentliche Nachricht
+    try {
+      if (typeof userMsg === 'string' && userMsg.trim().startsWith('{')) {
+        const parsed = JSON.parse(userMsg.trim());
+        if (parsed.error && parsed.error.message) {
+          userMsg = parsed.error.message;
+        }
+      }
+    } catch (e) {}
+
+    if (userMsg.includes('high demand') || userMsg.includes('UNAVAILABLE') || userMsg.includes('503')) {
+      userMsg = 'Die Google Gemini-Server erleben gerade eine kurze Lastspitze (High Demand). Bitte warte wenige Sekunden und klicke erneut auf „Zeichnung analysieren“.';
+    } else if (userMsg.includes('API key') || userMsg.includes('GEMINI_API_KEY')) {
+      userMsg = 'Der Gemini API-Key ist nicht konfiguriert. Bitte hinterlege den GEMINI_API_KEY in den App-Einstellungen (Settings > Secrets).';
+    } else if (userMsg.includes('429') || userMsg.includes('RESOURCE_EXHAUSTED')) {
+      userMsg = 'Das Abfrage-Limit wurde kurzzeitig erreicht. Bitte kurz warten und erneut versuchen.';
+    }
+
+    res.status(500).json({ error: userMsg });
+  }
 });
 
 // Fallback to index.html
