@@ -2098,35 +2098,34 @@
           saveJsonBinConfigLocal();
           fetch('/api/jsonbin/config', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(jsonbinConfig)
           }).catch(() => {});
           // Direkt Werkzeuge laden
-          pullFromJsonBinDirect(false);
+          await pullFromJsonBinDirect(false);
         }
       } catch(e) {}
 
       // Check server's stored jsonbin config
       try {
-        const res = await fetch('/api/jsonbin');
+        const res = await fetch('/api/jsonbin', { credentials: 'include' });
         if (res.ok) {
           const srvCfg = await res.json();
           if (srvCfg.enabled && srvCfg.binId) {
-            const prevBin = jsonbinConfig.binId;
             const cleanedSrvBin = extractBinId(srvCfg.binId);
             jsonbinConfig.enabled = true;
             jsonbinConfig.binId = cleanedSrvBin;
             jsonbinConfig.isPrivate = Boolean(srvCfg.isPrivate);
             jsonbinConfig.lastSync = srvCfg.lastSync;
             saveJsonBinConfigLocal();
-            // Wenn in diesem Browser noch keine Werkzeuge geladen sind oder sich die Bin-ID geändert hat:
-            if (tools.length === 0 || prevBin !== cleanedSrvBin) {
-              pullFromJsonBinDirect(false);
-            }
+            // Automatisch neueste Werkzeuge aus JSONBin laden
+            await pullFromJsonBinDirect(false);
           } else if (jsonbinConfig.enabled && jsonbinConfig.binId) {
             // Server hat noch keine Config, aber Client hat sie: an Server senden
             fetch('/api/jsonbin/config', {
               method: 'POST',
+              credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(jsonbinConfig)
             }).catch(() => {});
@@ -2141,63 +2140,74 @@
     async function pushToJsonBinDirect(manual) {
       if (!jsonbinConfig.enabled || !jsonbinConfig.binId) return;
       try {
-        const payload = {
-          tools: tools,
-          history: historyEntries,
-          updatedAt: new Date().toISOString()
-        };
+        let pushed = false;
+        // 1. Primär über Backend synchronisieren (zuverlässig gegen Browser-CORS/Adblocker)
+        try {
+          const sRes = await fetch('/api/jsonbin/sync', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ direction: 'push' })
+          });
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            if (sData.success) pushed = true;
+          }
+        } catch(e) {}
 
-        // 1. Direkt im Browser an JSONBin senden
-        const headers = { 'Content-Type': 'application/json' };
-        if (jsonbinConfig.apiKey && jsonbinConfig.apiKey.trim()) {
-          headers['X-Master-Key'] = jsonbinConfig.apiKey.trim();
+        // 2. Fallback: Direkt im Browser an JSONBin senden falls Backend offline
+        if (!pushed) {
+          const payload = {
+            tools: tools,
+            history: historyEntries,
+            updatedAt: new Date().toISOString()
+          };
+          const headers = { 'Content-Type': 'application/json' };
+          if (jsonbinConfig.apiKey && jsonbinConfig.apiKey.trim()) {
+            headers['X-Master-Key'] = jsonbinConfig.apiKey.trim();
+          }
+          const directRes = await fetch('https://api.jsonbin.io/v3/b/' + jsonbinConfig.binId, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(payload)
+          });
+          if (directRes.ok) pushed = true;
         }
-        fetch('https://api.jsonbin.io/v3/b/' + jsonbinConfig.binId, {
-          method: 'PUT',
-          headers: headers,
-          body: JSON.stringify(payload)
-        }).catch(function(err) {
-          console.warn('Direct browser push to JSONBin failed:', err);
-        });
-
-        // 2. Auch Backend anweisen zu sichern
-        const sRes = await fetch('/api/jsonbin/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ direction: 'push' })
-        });
 
         jsonbinConfig.lastSync = new Date().toISOString();
         saveJsonBinConfigLocal();
         updateJsonBinUI();
-        if (manual) showToast('📤 ' + tools.length + ' Werkzeuge erfolgreich zu JSONBin hochgeladen!', 'success');
+        if (manual) showToast('📤 ' + tools.length + ' Werkzeuge erfolgreich in JSONBin gesichert!', 'success');
+        return pushed;
       } catch (err) {
         console.warn('JSONBin push error:', err);
         if (manual) showToast('❌ Fehler beim Hochladen zu JSONBin: ' + err.message, 'warning');
+        return false;
       }
     }
 
     // Direct and Backend pull from JSONBin
     async function pullFromJsonBinDirect(manual) {
-      if (!jsonbinConfig.binId) return;
+      if (!jsonbinConfig.binId) return false;
       try {
         let loadedTools = null;
         let loadedHistory = null;
 
-        // Versuche 1: Über Backend
+        // Versuche 1: Über Backend abrufen (Server synchronisiert mit JSONBin)
         try {
           const sRes = await fetch('/api/jsonbin/sync', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ direction: 'pull' })
           });
           if (sRes.ok) {
             const sData = await sRes.json();
             if (sData.success) {
-              const tRes = await fetch('/api/tools');
+              const tRes = await fetch('/api/tools?fresh=1', { credentials: 'include' });
               if (tRes.ok) {
                 const tData = await tRes.json();
-                if (Array.isArray(tData.tools) && tData.tools.length > 0) {
+                if (Array.isArray(tData.tools)) {
                   loadedTools = tData.tools;
                 }
               }
@@ -2205,21 +2215,25 @@
           }
         } catch(e) {}
 
-        // Versuche 2: Direkt aus dem Browser abrufen (falls Backend nichts lieferte)
+        // Versuche 2: Direkt aus dem Browser abrufen (falls Backend offline war)
         if (!loadedTools && jsonbinConfig.binId) {
-          const headers = {};
-          if (jsonbinConfig.apiKey) headers['X-Master-Key'] = jsonbinConfig.apiKey;
-          const bRes = await fetch('https://api.jsonbin.io/v3/b/' + jsonbinConfig.binId + '/latest', {
-            headers: headers
-          });
-          if (bRes.ok) {
-            const bData = await bRes.json();
-            const rec = bData.record || {};
-            if (Array.isArray(rec.tools) && rec.tools.length > 0) {
-              loadedTools = rec.tools;
+          try {
+            const headers = {};
+            if (jsonbinConfig.apiKey) headers['X-Master-Key'] = jsonbinConfig.apiKey;
+            const bRes = await fetch('https://api.jsonbin.io/v3/b/' + jsonbinConfig.binId + '/latest', {
+              headers: headers
+            });
+            if (bRes.ok) {
+              const bData = await bRes.json();
+              const rec = bData.record || {};
+              if (Array.isArray(rec.tools)) {
+                loadedTools = rec.tools;
+              } else if (Array.isArray(rec)) {
+                loadedTools = rec;
+              }
               if (Array.isArray(rec.history)) loadedHistory = rec.history;
             }
-          }
+          } catch(e) {}
         }
 
         if (loadedTools && loadedTools.length > 0) {
@@ -2234,8 +2248,11 @@
           updateJsonBinUI();
           if (manual) showToast('📥 ' + tools.length + ' Werkzeuge aus JSONBin geladen!', 'success');
           return true;
+        } else if (loadedTools && loadedTools.length === 0) {
+          if (manual) showToast('ℹ️ Der Cloud-Bin ist aktuell leer (0 Werkzeuge).', 'info');
+          return false;
         } else {
-          if (manual) showToast('ℹ️ Der Cloud-Bin enthält noch keine Werkzeuge.', 'info');
+          if (manual) showToast('⚠️ Keine Werkzeuge aus JSONBin empfangen.', 'warning');
           return false;
         }
       } catch (err) {
@@ -3292,6 +3309,8 @@
 
     // Helper to safely parse JSON or extract readable error text
     async function safeFetchJson(url, options) {
+      options = options || {};
+      options.credentials = options.credentials || 'include';
       const res = await fetch(url, options);
       const contentType = (res.headers && res.headers.get('content-type')) || '';
       let data = null;
@@ -3425,6 +3444,7 @@
       try {
         const data = await safeFetchJson('/api/jsonbin/config', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enabled: true, binId: cleanBinId, apiKey: apiKey })
         });
@@ -3453,6 +3473,7 @@
             // Server im Hintergrund informieren
             fetch('/api/jsonbin/config', {
               method: 'POST',
+              credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ enabled: true, binId: cleanBinId, apiKey: apiKey })
             }).catch(() => {});
@@ -3485,6 +3506,11 @@
 
         // Werkzeuge aus dem neu verbundenen Bin laden
         const pulled = await pullFromJsonBinDirect(true);
+        if (!pulled && tools.length > 0) {
+          // Falls Cloud-Bin leer war, vorhandene Werkzeuge hochladen
+          await pushToJsonBinDirect(false);
+          showToast('☁️ ' + tools.length + ' lokale Werkzeuge in den leeren Cloud-Bin hochgeladen', 'info');
+        }
         const privText = jsonbinConfig.isPrivate ? ' (Privat)' : ' (Öffentlich)';
         showToast('✅ Erfolgreich mit JSONBin' + privText + ' verbunden! (' + tools.length + ' Werkzeuge geladen)', 'success');
       } catch (err) {
@@ -3504,6 +3530,7 @@
       try {
         const data = await safeFetchJson('/api/jsonbin/set-public', {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ binId: jsonbinConfig.binId, apiKey: jsonbinConfig.apiKey })
         });
@@ -3523,7 +3550,7 @@
       }
     });
 
-    // Test Connection
+    // Test Connection (reliable backend-first test with browser fallback)
     safeOn('btn-jsonbin-test', 'click', async function() {
       const binInput = document.getElementById('jsonbin-manual-binid');
       const keyInput = document.getElementById('jsonbin-manual-apikey');
@@ -3539,33 +3566,65 @@
       btn.textContent = '⚡ Teste...';
       btn.disabled = true;
 
+      let testOk = false;
+      let isPriv = false;
+      let toolCount = 0;
+      let testError = '';
+
+      // 1. Versuch: Über Werkstatt-Backend (umgeht Browser-CORS, Iframe & Adblocker)
       try {
-        const headers = {};
-        if (apiKey) headers['X-Master-Key'] = apiKey;
-        const testRes = await fetch('https://api.jsonbin.io/v3/b/' + cleanBinId + '/latest', {
-          headers: headers
+        const sRes = await fetch('/api/jsonbin/test', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ binId: cleanBinId, apiKey: apiKey })
         });
-        if (testRes.ok) {
-          const tData = await testRes.json();
-          const isPriv = Boolean(tData.metadata && tData.metadata.private);
-          const privText = isPriv ? '🔒 Privat (Key gültig)' : '🌐 Öffentlich (für alle Browser freigegeben)';
-          showToast('✅ Verbindung erfolgreich! Status: ' + privText, 'success');
-        } else {
-          const errTxt = await testRes.text();
-          if (testRes.status === 404) {
-            showToast('❌ Bin-ID nicht gefunden (404).', 'warning');
-          } else if (testRes.status === 401) {
-            showToast('❌ Zugriff verweigert (401). Der Bin ist privat und benötigt den Master-Key.', 'warning');
-          } else {
-            showToast('❌ Testfehler: HTTP ' + testRes.status, 'warning');
-          }
+        const sData = await sRes.json().catch(() => null);
+        if (sRes.ok && sData && sData.success) {
+          testOk = true;
+          isPriv = Boolean(sData.isPrivate);
+          toolCount = sData.count || 0;
+        } else if (sData && sData.error) {
+          testError = sData.error;
         }
       } catch(e) {
-        showToast('❌ Testfehler: ' + e.message, 'warning');
-      } finally {
-        btn.textContent = '⚡ Verbindung testen';
-        btn.disabled = false;
+        // Backend offline, fallback to direct browser fetch
       }
+
+      // 2. Fallback: Direkt im Browser
+      if (!testOk && !testError) {
+        try {
+          const headers = {};
+          if (apiKey) headers['X-Master-Key'] = apiKey;
+          const directRes = await fetch('https://api.jsonbin.io/v3/b/' + cleanBinId + '/latest', {
+            headers: headers
+          });
+          if (directRes.ok) {
+            const tData = await directRes.json();
+            testOk = true;
+            isPriv = Boolean(tData.metadata && tData.metadata.private);
+            const rec = tData.record || {};
+            toolCount = Array.isArray(rec.tools) ? rec.tools.length : (Array.isArray(rec) ? rec.length : 0);
+          } else {
+            const errTxt = await directRes.text();
+            if (directRes.status === 404) testError = 'Bin-ID nicht gefunden (404).';
+            else if (directRes.status === 401) testError = 'Bin ist privat (401). Master-Key erforderlich.';
+            else testError = 'HTTP ' + directRes.status;
+          }
+        } catch(e) {
+          testError = e.message;
+        }
+      }
+
+      if (testOk) {
+        const privText = isPriv ? '🔒 Privat (Key gültig)' : '🌐 Öffentlich (für alle Browser freigegeben)';
+        showToast('✅ Verbindung erfolgreich! (' + toolCount + ' Werkzeuge in Cloud) • ' + privText, 'success');
+      } else {
+        showToast('❌ ' + (testError || 'Verbindung zu JSONBin fehlgeschlagen'), 'warning');
+      }
+
+      btn.textContent = '⚡ Verbindung testen';
+      btn.disabled = false;
     });
 
     // Push to JSONBin
@@ -3592,6 +3651,7 @@
         try {
           await fetch('/api/jsonbin/config', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ enabled: false, binId: '', apiKey: '' })
           });
@@ -3601,12 +3661,21 @@
       }
     });
 
+    // Force 2-Way Sync (Server + JSONBin)
     safeOn('btn-force-sync', 'click', async function() {
       const btn = document.getElementById('btn-force-sync');
       if (btn) btn.textContent = '⏳ Synchronisiere...';
-      await fetchBackendData(false);
-      if (btn) btn.textContent = '🔄 Server-Abgleich';
-      showToast('✅ Daten erfolgreich mit Server abgeglichen', 'success');
+      try {
+        if (jsonbinConfig.enabled && jsonbinConfig.binId) {
+          await pullFromJsonBinDirect(false);
+        }
+        await fetchBackendData(false);
+        showToast('✅ Daten erfolgreich mit JSONBin & Werkstatt-Server abgeglichen (' + tools.length + ' Werkzeuge)', 'success');
+      } catch(e) {
+        showToast('⚠️ Abgleich: ' + e.message, 'warning');
+      } finally {
+        if (btn) btn.textContent = '🔄 Server-Abgleich';
+      }
     });
 
     safeOn('btn-download-backup', 'click', function() {
@@ -4280,11 +4349,10 @@
     renderStats();
     renderGrid();
 
-    // Cloud-Sync (JSONBin) initialisieren
-    initJsonBin();
-
-    // Initiale Synchronisation mit dem Server & Polling für Mehrbenutzerbetrieb
-    fetchBackendData(true);
+    // Cloud-Sync (JSONBin) initialisieren und anschließend mit Server abgleichen
+    initJsonBin().finally(function() {
+      fetchBackendData(true);
+    });
     if (!pollInterval) {
       pollInterval = setInterval(function() {
         fetchBackendData(true);

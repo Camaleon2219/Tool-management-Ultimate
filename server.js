@@ -175,15 +175,19 @@ async function pullFromJsonBin() {
     if (res.ok) {
       const data = await res.json();
       const record = data.record || {};
-      if (Array.isArray(record.tools) && record.tools.length > 0) {
-        writeTools(record.tools);
+      let toolsArray = [];
+      if (Array.isArray(record.tools)) toolsArray = record.tools;
+      else if (Array.isArray(record)) toolsArray = record;
+
+      if (toolsArray.length > 0) {
+        writeTools(toolsArray);
       }
       if (Array.isArray(record.history)) {
         writeHistory(record.history);
       }
       cfg.lastSync = new Date().toISOString();
       writeJsonBinConfig(cfg);
-      return { success: true, count: (record.tools || []).length, lastSync: cfg.lastSync };
+      return { success: true, count: toolsArray.length, lastSync: cfg.lastSync };
     }
     const errText = await res.text();
     const errMsg = parseJsonBinErrorMessage(res.status, errText);
@@ -193,12 +197,38 @@ async function pullFromJsonBin() {
   }
 }
 
+let lastCloudSyncTime = 0;
+let isCloudSyncing = false;
+
+async function checkAndSyncWithCloud(force = false) {
+  const cfg = readJsonBinConfig();
+  const cleanId = extractBinId(cfg.binId);
+  if (!cfg.enabled || !cleanId) return null;
+  const now = Date.now();
+  if (!force && (now - lastCloudSyncTime < 15000 || isCloudSyncing)) {
+    return null;
+  }
+  isCloudSyncing = true;
+  try {
+    const result = await pullFromJsonBin();
+    lastCloudSyncTime = Date.now();
+    return result;
+  } finally {
+    isCloudSyncing = false;
+  }
+}
+
 // Check and pull from JSONBin on startup if configured
 setTimeout(() => {
-  pullFromJsonBin().then(r => {
+  checkAndSyncWithCloud(true).then(r => {
     if (r && r.success) console.log(`Startup: Synced ${r.count} tools from JSONBin.io`);
   }).catch(() => {});
 }, 1000);
+
+// Periodic background pull from JSONBin so changes from other devices propagate automatically
+setInterval(() => {
+  checkAndSyncWithCloud(false).catch(() => {});
+}, 25000);
 
 app.use('/uploads', express.static(UPLOADS_DIR));
 
@@ -276,7 +306,12 @@ function writeHistory(history) {
 }
 
 // APIs
-app.get('/api/tools', (req, res) => {
+app.get('/api/tools', async (req, res) => {
+  if (req.query.fresh === '1') {
+    await checkAndSyncWithCloud(true).catch(() => {});
+  } else {
+    checkAndSyncWithCloud(false).catch(() => {});
+  }
   res.json({ tools: readTools() });
 });
 
@@ -337,9 +372,62 @@ app.get('/api/jsonbin', (req, res) => {
   });
 });
 
+app.post('/api/jsonbin/test', async (req, res) => {
+  try {
+    const { binId, apiKey } = req.body;
+    const cleanBinId = extractBinId(binId);
+    if (!cleanBinId) {
+      return res.status(400).json({ success: false, error: 'Bitte geben Sie eine gültige 24-stellige Bin-ID ein.' });
+    }
+    const headers = {};
+    const existingCfg = readJsonBinConfig();
+    const effectiveApiKey = (apiKey && apiKey.trim()) || (existingCfg.binId === cleanBinId ? (existingCfg.apiKey || '') : '');
+    if (effectiveApiKey) {
+      headers['X-Master-Key'] = effectiveApiKey;
+    }
+    const testRes = await fetch(`https://api.jsonbin.io/v3/b/${cleanBinId}/latest`, {
+      headers: headers
+    });
+    if (!testRes.ok) {
+      const errTxt = await testRes.text();
+      const message = parseJsonBinErrorMessage(testRes.status, errTxt);
+      return res.status(testRes.status).json({
+        success: false,
+        error: message,
+        status: testRes.status
+      });
+    }
+    const data = await testRes.json();
+    const isPrivate = Boolean(data.metadata && data.metadata.private);
+    const rec = data.record || {};
+    const count = Array.isArray(rec.tools) ? rec.tools.length : (Array.isArray(rec) ? rec.length : 0);
+    return res.json({
+      success: true,
+      binId: cleanBinId,
+      isPrivate: isPrivate,
+      count: count,
+      name: (data.metadata && data.metadata.name) || 'FJK_CNC_Werkzeuge'
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Serververbindung zu JSONBin fehlgeschlagen: ' + err.message });
+  }
+});
+
 app.post('/api/jsonbin/config', async (req, res) => {
   try {
     const { binId, apiKey, enabled = true } = req.body;
+    if (!enabled || enabled === 'false') {
+      const cfg = {
+        enabled: false,
+        binId: '',
+        apiKey: '',
+        isPrivate: false,
+        lastSync: null
+      };
+      writeJsonBinConfig(cfg);
+      return res.json({ success: true, enabled: false, message: 'JSONBin-Verbindung getrennt' });
+    }
+
     const cleanBinId = extractBinId(binId);
     if (!cleanBinId) {
       return res.status(400).json({ error: 'Bitte geben Sie eine gültige 24-stellige Bin-ID oder URL ein.' });
@@ -375,11 +463,15 @@ app.post('/api/jsonbin/config', async (req, res) => {
 
     // If the remote bin has tools, merge or load them; if remote is empty, push local tools
     const record = data.record || {};
+    let remoteTools = [];
+    if (Array.isArray(record.tools)) remoteTools = record.tools;
+    else if (Array.isArray(record)) remoteTools = record;
+
     let count = 0;
-    if (Array.isArray(record.tools) && record.tools.length > 0) {
-      writeTools(record.tools);
+    if (remoteTools.length > 0) {
+      writeTools(remoteTools);
       if (Array.isArray(record.history)) writeHistory(record.history);
-      count = record.tools.length;
+      count = remoteTools.length;
     } else {
       await pushToJsonBin();
       count = readTools().length;
