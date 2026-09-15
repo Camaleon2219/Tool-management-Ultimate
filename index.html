@@ -43,7 +43,7 @@
       min-height: 100vh;
       padding: 1rem;
     }
-    .container { max-width: 1400px; margin: 0 auto; }
+    .container { max-width: 2400px; margin: 0 auto; }
     .header {
       background: var(--bg-surface);
       border-radius: 1rem;
@@ -165,6 +165,46 @@
       gap: 0.5rem;
     }
     .btn-label:hover { background: #7c3aed; }
+    .btn-nfc {
+      background: #0284c7;
+      color: white;
+      border-color: #0284c7;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-nfc:hover { background: #0369a1; }
+    .nfc-mode-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.45rem 0.6rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .nfc-mode-btn.active {
+      background: var(--bg-surface);
+      color: var(--text-title);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    .nfc-pulse-ring {
+      position: absolute;
+      inset: -6px;
+      border: 2px solid #0284c7;
+      border-radius: 50%;
+      animation: nfc-pulse 2s infinite ease-out;
+      opacity: 0;
+      pointer-events: none;
+    }
+    @keyframes nfc-pulse {
+      0% { transform: scale(0.85); opacity: 0.85; }
+      50% { transform: scale(1.3); opacity: 0.35; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
     .btn-sm {
       padding: 0.4rem 0.75rem;
       font-size: 0.875rem;
@@ -305,6 +345,7 @@
     .icon-btn:hover { background: var(--bg-surface-alt); color: var(--text-base); }
     .icon-btn.delete:hover { background: rgba(239,68,68,0.1); color: var(--danger); }
     .icon-btn.copy:hover { background: rgba(59,130,246,0.1); color: var(--primary); }
+    .icon-btn.nfc:hover { background: rgba(2,132,199,0.18); color: #0284c7; }
     .empty {
       display: none;
       flex-direction: column;
@@ -734,6 +775,9 @@
       <button type="button" class="btn btn-secondary" id="btn-open-history" title="Änderungsprotokoll aller Werkzeuge anzeigen">
         <span>📜</span> Protokoll <span id="history-count-badge" style="background:var(--primary); color:#fff; font-size:0.7rem; font-weight:700; padding:0.12rem 0.45rem; border-radius:1rem; margin-left:0.3rem;">0</span>
       </button>
+      <button type="button" class="btn btn-nfc" id="btn-open-nfc" title="NFC Werkzeug-Scanner & Schnellbuchung (Entnahme / Rückgabe)">
+        <span>📡</span> NFC-Scanner
+      </button>
       <button type="button" class="sync-status online" id="btn-sync" title="Server-Synchronisation (Live)">
         <span class="sync-dot"></span>
         <span id="sync-text">Live Server</span>
@@ -933,6 +977,7 @@
             <button type="button" class="btn btn-secondary" id="btn-cancel">Abbrechen</button>
             <button type="button" class="btn btn-print" id="btn-print" style="display:none;">🖨️ Datenblatt</button>
             <button type="button" class="btn btn-label" id="btn-print-label" style="display:none;">🏷️ Etikett</button>
+            <button type="button" class="btn btn-nfc" id="btn-write-nfc" style="display:none;" title="Dieses Werkzeug auf einen NFC-Chip schreiben">📡 Auf NFC schreiben</button>
           </div>
         </form>
       </div>
@@ -1141,6 +1186,170 @@
             <button type="button" class="btn btn-secondary btn-sm" id="btn-server-cancel" style="margin-left:auto;">Schließen</button>
           </div>
 
+        </div>
+      </div>
+    </div>
+
+    <!-- NFC Scanner & Booking Modal -->
+    <div class="modal" id="nfc-modal">
+      <div class="modal-backdrop" id="nfc-backdrop"></div>
+      <div class="modal-box" style="max-width: 580px; max-height: 92vh; overflow-y: auto;">
+        <div class="modal-header" style="margin-bottom:1rem;">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="font-size:1.5rem;">📡</span>
+            <div>
+              <h2 class="modal-title" style="font-size:1.15rem; line-height:1.2;">NFC-Scanner & Schnellbuchung</h2>
+              <div style="font-size:0.75rem; color:var(--text-muted);">Werkzeuge per NFC-Chip berührungslos buchen oder beschreiben</div>
+            </div>
+          </div>
+          <button type="button" class="modal-close" id="nfc-modal-close">&times;</button>
+        </div>
+
+        <!-- Mode selector pills -->
+        <div style="display:flex; gap:0.4rem; background:var(--bg-surface-alt); padding:0.3rem; border-radius:0.75rem; margin-bottom:1rem; border:1px solid var(--border);">
+          <button type="button" class="nfc-mode-btn active" data-mode="ask" id="nfc-mode-ask" style="flex:1;">
+            🎯 Interaktiv (Fragen)
+          </button>
+          <button type="button" class="nfc-mode-btn" data-mode="takeout" id="nfc-mode-takeout" style="flex:1;">
+            🔴 Auto-Entnahme (-1)
+          </button>
+          <button type="button" class="nfc-mode-btn" data-mode="return" id="nfc-mode-return" style="flex:1;">
+            🟢 Auto-Rückgabe (+1)
+          </button>
+        </div>
+
+        <!-- Radar / Scanner Status Box -->
+        <div id="nfc-radar-box" style="background:rgba(2,132,199,0.08); border:1px solid rgba(2,132,199,0.3); border-radius:1rem; padding:1.25rem 1rem; text-align:center; margin-bottom:1rem; position:relative; overflow:hidden;">
+          <div class="nfc-radar-circle" id="nfc-radar-circle" style="width:64px; height:64px; margin:0 auto 0.75rem; background:rgba(2,132,199,0.15); border:2px solid #0284c7; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.8rem; position:relative;">
+            📡
+            <div class="nfc-pulse-ring"></div>
+          </div>
+          <div id="nfc-status-title" style="font-weight:700; color:var(--text-title); font-size:0.95rem; margin-bottom:0.25rem;">
+            Bereit zum Scannen...
+          </div>
+          <div id="nfc-status-desc" style="font-size:0.8rem; color:var(--text-muted); line-height:1.4; max-width:440px; margin:0 auto;">
+            Halte die Rückseite deines Smartphones an den NFC-Chip am Werkzeughalter oder Magazinfach.
+          </div>
+          <div style="margin-top:0.75rem; display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-nfc-toggle-scan">
+              <span id="nfc-scan-btn-icon">⚡</span> <span id="nfc-scan-btn-text">NFC-Leser neu starten</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-nfc-sound-toggle" title="Akustisches Feedback">
+              <span id="nfc-sound-icon">🔊</span> Ton an
+            </button>
+          </div>
+        </div>
+
+        <!-- Feedback Alert inside Modal -->
+        <div id="nfc-feedback-banner" style="display:none; padding:0.75rem 1rem; border-radius:0.75rem; margin-bottom:1rem; font-size:0.85rem; font-weight:600; text-align:center;"></div>
+
+        <!-- Scanned Tool Card (Active Booking Panel) -->
+        <div id="nfc-scanned-card" style="display:none; background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:1rem; padding:1.25rem; margin-bottom:1rem;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem; gap:0.5rem;">
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <div id="nfc-card-icon" style="width:3.2rem; height:3.2rem; border-radius:0.75rem; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:1.75rem;">⚙️</div>
+              <div>
+                <div id="nfc-card-name" style="font-weight:700; color:var(--text-title); font-size:1.05rem; line-height:1.3;">-</div>
+                <div id="nfc-card-sub" style="font-size:0.78rem; color:var(--text-muted); margin-top:0.15rem;">-</div>
+              </div>
+            </div>
+            <span id="nfc-card-status-badge" class="status-badge" style="white-space:nowrap;">-</span>
+          </div>
+
+          <!-- Stock counter row -->
+          <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-surface); padding:0.75rem 1rem; border-radius:0.75rem; border:1px solid var(--border); margin-bottom:1rem;">
+            <div>
+              <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Aktueller Bestand</div>
+              <div style="font-size:1.5rem; font-weight:800; color:var(--text-title); display:flex; align-items:baseline; gap:0.3rem;">
+                <span id="nfc-card-qty" style="color:var(--primary);">0</span>
+                <span style="font-size:0.85rem; font-weight:500; color:var(--text-muted);">Stück</span>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:0.75rem; color:var(--text-muted);">Lagerort / Fach</div>
+              <div id="nfc-card-location" style="font-weight:700; color:var(--text-title); font-size:0.95rem;">-</div>
+            </div>
+          </div>
+
+          <!-- Fast Action Buttons: Large touch targets -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.65rem; margin-bottom:0.75rem;">
+            <button type="button" class="btn btn-danger" id="btn-nfc-action-takeout" style="padding:0.85rem 0.5rem; font-size:1rem; justify-content:center; border-radius:0.75rem;">
+              <span style="font-size:1.2rem;">🔴</span> 1x Entnehmen (-1)
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-nfc-action-return" style="background:#16a34a; border-color:#16a34a; padding:0.85rem 0.5rem; font-size:1rem; justify-content:center; border-radius:0.75rem;">
+              <span style="font-size:1.2rem;">🟢</span> 1x Zurücklegen (+1)
+            </button>
+          </div>
+
+          <!-- Custom step buttons -->
+          <div style="display:flex; gap:0.35rem; justify-content:center; margin-bottom:0.85rem;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-nfc-minus-5" style="padding:0.25rem 0.6rem; font-size:0.8rem;">-5 Stk.</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-nfc-minus-2" style="padding:0.25rem 0.6rem; font-size:0.8rem;">-2 Stk.</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-nfc-plus-2" style="padding:0.25rem 0.6rem; font-size:0.8rem;">+2 Stk.</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-nfc-plus-5" style="padding:0.25rem 0.6rem; font-size:0.8rem;">+5 Stk.</button>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:0.75rem; font-size:0.8rem; flex-wrap:wrap; gap:0.5rem;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-nfc-open-details" style="display:inline-flex; align-items:center; gap:0.3rem;">
+              <span>✏️</span> Datenblatt / Bearbeiten
+            </button>
+            <button type="button" class="btn btn-nfc btn-sm" id="btn-nfc-rewrite-chip" style="display:inline-flex; align-items:center; gap:0.3rem;">
+              <span>✍️</span> Chip neu beschreiben
+            </button>
+          </div>
+        </div>
+
+        <!-- Manual selection / USB Scanner simulation -->
+        <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:0.75rem; padding:0.85rem; margin-bottom:0.75rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+            <strong style="font-size:0.82rem; color:var(--text-title);">💻 Manuelle Simulation / Barcode- & USB-Scanner:</strong>
+            <span style="font-size:0.7rem; color:var(--text-muted);">Für Test am PC</span>
+          </div>
+          <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+            <select id="nfc-manual-select" class="form-select" style="flex:1 1 200px; font-size:0.82rem; padding:0.45rem 0.6rem;">
+              <option value="">-- Werkzeug zur Simulation auswählen --</option>
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-nfc-manual-pick">Simulieren</button>
+          </div>
+        </div>
+
+        <!-- Recent NFC audit history -->
+        <div style="border-top:1px solid var(--border); padding-top:0.75rem;">
+          <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; margin-bottom:0.4rem; display:flex; justify-content:space-between;">
+            <span>🕒 Letzte NFC-Buchungen</span>
+            <span id="nfc-recent-count">0 Buchungen</span>
+          </div>
+          <div id="nfc-recent-list" style="font-size:0.75rem; color:var(--text-muted); max-height:110px; overflow-y:auto;">
+            <div style="text-align:center; padding:0.4rem; color:var(--text-muted);">Noch keine NFC-Buchungen in dieser Sitzung</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- NFC Write Modal -->
+    <div class="modal" id="nfc-write-modal">
+      <div class="modal-backdrop" id="nfc-write-backdrop"></div>
+      <div class="modal-box" style="max-width: 460px; text-align:center;">
+        <div class="modal-header" style="justify-content:center; position:relative; margin-bottom:1rem;">
+          <h2 class="modal-title" style="font-size:1.15rem;">✍️ Werkzeug auf NFC-Chip schreiben</h2>
+          <button type="button" class="modal-close" id="nfc-write-modal-close" style="position:absolute; right:0; top:-5px;">&times;</button>
+        </div>
+
+        <div class="nfc-radar-circle" style="width:68px; height:68px; margin:0 auto 1rem; background:rgba(2,132,199,0.15); border:2px solid #0284c7; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2rem; position:relative;">
+          ✍️
+          <div class="nfc-pulse-ring"></div>
+        </div>
+
+        <div style="font-size:0.95rem; font-weight:700; color:var(--text-title); margin-bottom:0.3rem;" id="nfc-write-tool-name">-</div>
+        <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:1rem;" id="nfc-write-tool-id">-</div>
+
+        <div id="nfc-write-status-box" style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:0.75rem; padding:0.85rem; font-size:0.82rem; color:var(--text-base); margin-bottom:1.25rem; line-height:1.4;">
+          Halte jetzt einen leeren, beschreibbaren NFC-Tag (z.B. NTAG213, NTAG215 oder On-Metal Chip) an die Rückseite deines Smartphones.
+        </div>
+
+        <div class="form-actions" style="justify-content:center; gap:0.5rem;">
+          <button type="button" class="btn btn-secondary" id="btn-nfc-write-cancel">Abbrechen</button>
         </div>
       </div>
     </div>
@@ -1931,6 +2140,7 @@
           <div class="card-footer">
             <span style="font-size:0.75rem; color:var(--text-muted);">${esc(tool.manufacturer || '—')}</span>
             <div class="card-actions">
+              <button type="button" class="icon-btn nfc" data-action="nfc" data-id="${tool.id}" title="NFC-Schnellbuchung & Chip">📡</button>
               <button type="button" class="icon-btn" data-action="edit" data-id="${tool.id}" title="Bearbeiten">✏️</button>
               <button type="button" class="icon-btn copy" data-action="copy" data-id="${tool.id}" title="Kopieren">📋</button>
               <button type="button" class="icon-btn delete" data-action="delete" data-id="${tool.id}" title="Löschen">🗑️</button>
@@ -2112,6 +2322,8 @@
 
         printBtn.style.display = 'inline-flex';
         labelBtn.style.display = 'inline-flex';
+        const nfcWriteBtn = document.getElementById('btn-write-nfc');
+        if (nfcWriteBtn) nfcWriteBtn.style.display = 'inline-flex';
 
         // Historie für dieses Werkzeug anzeigen
         const histSection = document.getElementById('tool-history-section');
@@ -2154,6 +2366,8 @@
         showImagePreview('');
         printBtn.style.display = 'none';
         labelBtn.style.display = 'none';
+        const nfcWriteBtn = document.getElementById('btn-write-nfc');
+        if (nfcWriteBtn) nfcWriteBtn.style.display = 'none';
         const histSection = document.getElementById('tool-history-section');
         if (histSection) histSection.style.display = 'none';
       }
@@ -2434,6 +2648,7 @@
       if (action === 'edit') { const tool = tools.find(function(t) { return t.id === id; }); if (tool) openModal(tool); }
       else if (action === 'copy') { copyTool(id); }
       else if (action === 'delete') { deleteId = id; openDeleteModal(); }
+      else if (action === 'nfc') { openNfcModal(id); }
     });
 
     safeOn('tool-form', 'submit', function(e) {
