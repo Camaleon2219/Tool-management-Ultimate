@@ -205,7 +205,7 @@ async function checkAndSyncWithCloud(force = false) {
   const cleanId = extractBinId(cfg.binId);
   if (!cfg.enabled || !cleanId) return null;
   const now = Date.now();
-  if (!force && (now - lastCloudSyncTime < 15000 || isCloudSyncing)) {
+  if (!force && (now - lastCloudSyncTime < 5000 || isCloudSyncing)) {
     return null;
   }
   isCloudSyncing = true;
@@ -228,7 +228,7 @@ setTimeout(() => {
 // Periodic background pull from JSONBin so changes from other devices propagate automatically
 setInterval(() => {
   checkAndSyncWithCloud(false).catch(() => {});
-}, 25000);
+}, 8000);
 
 app.use('/uploads', express.static(UPLOADS_DIR));
 
@@ -307,10 +307,9 @@ function writeHistory(history) {
 
 // APIs
 app.get('/api/tools', async (req, res) => {
-  if (req.query.fresh === '1') {
+  const now = Date.now();
+  if (now - lastCloudSyncTime > 5000 || req.query.fresh === '1') {
     await checkAndSyncWithCloud(true).catch(() => {});
-  } else {
-    checkAndSyncWithCloud(false).catch(() => {});
   }
   res.json({ tools: readTools() });
 });

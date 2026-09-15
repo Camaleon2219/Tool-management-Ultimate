@@ -1974,8 +1974,8 @@
 
     // ==================== JSONBIN.IO CLOUD SYNC STATE ====================
     let jsonbinConfig = {
-      enabled: false,
-      binId: '',
+      enabled: true,
+      binId: '6aa9246bffd5d1605309592b',
       apiKey: '',
       lastSync: null
     };
@@ -1990,6 +1990,11 @@
           }
         }
       } catch(e) {}
+      // Standard-Bin-ID immer sicherstellen, damit keine manuelle Verbindung nötig ist
+      if (!jsonbinConfig.binId) {
+        jsonbinConfig.binId = '6aa9246bffd5d1605309592b';
+        jsonbinConfig.enabled = true;
+      }
     }
 
     function saveJsonBinConfigLocal() {
@@ -2193,6 +2198,8 @@
         let loadedTools = null;
         let loadedHistory = null;
 
+        let isDirectBrowserLoad = false;
+
         // Versuche 1: Über Backend abrufen (Server synchronisiert mit JSONBin)
         try {
           const sRes = await fetch('/api/jsonbin/sync', {
@@ -2232,6 +2239,7 @@
                 loadedTools = rec;
               }
               if (Array.isArray(rec.history)) loadedHistory = rec.history;
+              isDirectBrowserLoad = true;
             }
           } catch(e) {}
         }
@@ -2240,7 +2248,7 @@
           tools = loadedTools;
           if (loadedHistory) historyEntries = loadedHistory;
           saveToolsLocal();
-          saveToolsToBackend();
+          if (isDirectBrowserLoad) saveToolsToBackend();
           renderStats();
           renderGrid();
           jsonbinConfig.lastSync = new Date().toISOString();
@@ -2274,8 +2282,8 @@
     // ==================== PERSISTENCE & AUDIT LOG API ====================
     async function fetchBackendData(silent) {
       try {
-        // 1. Tools abrufen
-        const tRes = await fetch('/api/tools');
+        // 1. Tools abrufen (mit Session-Credentials für Nginx-Proxy)
+        const tRes = await fetch('/api/tools', { credentials: 'include' });
         if (tRes.ok) {
           const tData = await tRes.json();
           if (Array.isArray(tData.tools) && tData.tools.length > 0) {
@@ -2283,10 +2291,14 @@
             const modalEl = document.getElementById('modal');
             const isModalOpen = modalEl && modalEl.classList.contains('active');
             if (!isModalOpen) {
-              tools = tData.tools;
-              saveToolsLocal();
-              renderStats();
-              renderGrid();
+              const prevJson = JSON.stringify(tools);
+              const nextJson = JSON.stringify(tData.tools);
+              if (prevJson !== nextJson || tools.length === 0) {
+                tools = tData.tools;
+                saveToolsLocal();
+                renderStats();
+                renderGrid();
+              }
             }
           } else if (tools.length === 0) {
             // Falls Backend noch keine Werkzeuge hat, aber JSONBin eingerichtet ist: aus JSONBin wiederherstellen!
@@ -2304,15 +2316,19 @@
         }
 
         // 2. Änderungsprotokoll abrufen
-        const hRes = await fetch('/api/history');
+        const hRes = await fetch('/api/history', { credentials: 'include' });
         if (hRes.ok) {
           const hData = await hRes.json();
           if (Array.isArray(hData.history)) {
-            historyEntries = hData.history;
-            updateHistoryBadge();
-            const histModal = document.getElementById('history-modal');
-            if (histModal && histModal.classList.contains('active')) {
-              renderHistoryList();
+            const prevHist = JSON.stringify(historyEntries);
+            const nextHist = JSON.stringify(hData.history);
+            if (prevHist !== nextHist) {
+              historyEntries = hData.history;
+              updateHistoryBadge();
+              const histModal = document.getElementById('history-modal');
+              if (histModal && histModal.classList.contains('active')) {
+                renderHistoryList();
+              }
             }
           }
         }
@@ -2447,6 +2463,7 @@
     function renderStats() {
       document.getElementById('total-count').textContent = tools.length;
       const totalPieces = tools.reduce(function(acc, t) {
+        if (t.status === 'nicht verfügbar') return acc;
         const q = parseInt(t.quantity, 10);
         return acc + (isNaN(q) || q < 0 ? 1 : q);
       }, 0);
@@ -2487,7 +2504,16 @@
           ? '<img src="' + esc(tool.imageUrl) + '" class="card-image" alt="Werkzeugbild" onerror="this.style.display=\'none\'">'
           : (tool.image ? '<img src="' + tool.image + '" class="card-image" alt="Werkzeugbild">' : '');
         const linkHtml = tool.link ? '<a href="' + esc(tool.link) + '" target="_blank" class="card-link">🔗 Hersteller-Link</a>' : '';
-        const qtyDisplay = (tool.quantity !== undefined && tool.quantity !== null && tool.quantity !== '') ? tool.quantity : '1';
+        const isNotAvailable = tool.status === 'nicht verfügbar';
+        let qtyDisplay = '1';
+        if (isNotAvailable) {
+          qtyDisplay = '0';
+        } else if (tool.quantity !== undefined && tool.quantity !== null && tool.quantity !== '') {
+          qtyDisplay = String(tool.quantity);
+        }
+        const qtyBadgeStyle = isNotAvailable
+          ? 'background:rgba(239,68,68,0.15); color:var(--danger); font-weight:700;'
+          : 'background:rgba(59,130,246,0.15); color:var(--primary); font-weight:700;';
 
         let auditText = '';
         if (tool.updatedAt && tool.updatedBy) {
@@ -2506,7 +2532,7 @@
           <div class="card-header">
             <div class="card-icon">${icon}</div>
             <div style="display:flex; align-items:center; gap:0.4rem;">
-              <span class="status-badge" style="background:rgba(59,130,246,0.15); color:var(--primary); font-weight:700;">📦 ${esc(qtyDisplay)} Stk.</span>
+              <span class="status-badge" style="${qtyBadgeStyle}">📦 ${esc(qtyDisplay)} Stk.</span>
               <span class="status-badge ${stClass}">${tool.status}</span>
             </div>
           </div>
@@ -2516,7 +2542,7 @@
             ${tool.diameter ? '<b>Ø' + tool.diameter + ' mm</b>' : ''}
             ${tool.length ? ' · ' + tool.length + ' mm' : ''}
             ${tool.flutes ? ' · ' + tool.flutes + ' Schneiden' : ''}
-            · <b style="color:var(--text-title);">${esc(qtyDisplay)} Stück</b>
+            · <b style="color:${isNotAvailable ? 'var(--danger)' : 'var(--text-title)'};">${esc(qtyDisplay)} Stück</b>
           </div>
           <div class="tags">
             ${tool.coating && tool.coating !== '—' ? '<span class="tag">' + esc(tool.coating) + '</span>' : ''}
@@ -2706,7 +2732,7 @@
         document.getElementById('tool-coolant').value = data.coolant || 'Innenkühlung';
         document.getElementById('tool-machine').value = data.machine;
         document.getElementById('tool-location').value = data.location;
-        document.getElementById('tool-quantity').value = (data.quantity !== undefined && data.quantity !== null && data.quantity !== '') ? data.quantity : '1';
+        document.getElementById('tool-quantity').value = (data.status === 'nicht verfügbar') ? '0' : ((data.quantity !== undefined && data.quantity !== null && data.quantity !== '') ? data.quantity : '1');
         document.getElementById('tool-notes').value = data.notes;
         
         // Bild sowohl aus data.imageUrl als auch aus data.image anzeigen
@@ -2838,7 +2864,7 @@
           '<tr><td>Magazin-Platz</td><td>' + (tool.magazine || '—') + '</td></tr>' +
           '<tr><td>Aktuelle Maschine</td><td>' + (tool.machine || '—') + '</td></tr>' +
           '<tr><td>Lagerort</td><td>' + (tool.location || '—') + '</td></tr>' +
-          '<tr><td>Stückzahl / Bestand</td><td><b>' + (tool.quantity ? tool.quantity + ' Stück' : '1 Stück') + '</b></td></tr>' +
+          '<tr><td>Stückzahl / Bestand</td><td><b>' + (tool.status === 'nicht verfügbar' ? '0 Stück (Nicht verfügbar)' : (tool.quantity ? tool.quantity + ' Stück' : '1 Stück')) + '</b></td></tr>' +
           (tool.link ? '<tr><td>Link</td><td>' + tool.link + '</td></tr>' : '') +
         '</table>' +
         (tool.notes ? '<div class="notes"><h3>Notizen / Schnittdaten</h3><p>' + tool.notes + '</p></div>' : '') +
@@ -2920,7 +2946,7 @@
             '<div class="specs">' +
               (tool.diameter ? '<span>Ø' + tool.diameter + ' mm</span>' : '') +
               (tool.material ? '<span>' + tool.material + '</span>' : '') +
-              (tool.quantity ? '<span><b>' + tool.quantity + ' Stk.</b></span>' : '') +
+              (tool.status === 'nicht verfügbar' ? '<span><b style="color:#b91c1c;">0 Stk.</b></span>' : (tool.quantity ? '<span><b>' + tool.quantity + ' Stk.</b></span>' : '<span><b>1 Stk.</b></span>')) +
               (tool.coolant ? '<span>' + (tool.coolant === 'Minimalmengenschmierung' ? 'MMS' : tool.coolant) + '</span>' : '') +
             '</div>' +
           '</div>' +
@@ -3049,11 +3075,20 @@
     safeOn('tool-form', 'submit', function(e) {
       e.preventDefault();
       const id = document.getElementById('tool-id').value;
+      const statusVal = document.getElementById('tool-status').value;
+      const rawQty = document.getElementById('tool-quantity').value.trim();
+      let finalQty = '1';
+      if (statusVal === 'nicht verfügbar') {
+        finalQty = '0';
+      } else if (rawQty !== '') {
+        finalQty = rawQty;
+      }
+
       const data = {
         id: id || generateId(),
         name: document.getElementById('tool-name').value.trim(),
         category: document.getElementById('tool-category').value,
-        status: document.getElementById('tool-status').value,
+        status: statusVal,
         icon: document.getElementById('tool-icon').value.trim() || defaultIconForCategory(document.getElementById('tool-category').value),
         image: currentImageBase64,
         imageUrl: document.getElementById('tool-image-url').value.trim(),
@@ -3072,7 +3107,7 @@
         coolant: document.getElementById('tool-coolant').value,
         machine: document.getElementById('tool-machine').value.trim(),
         location: document.getElementById('tool-location').value.trim(),
-        quantity: document.getElementById('tool-quantity').value.trim() || '1',
+        quantity: finalQty,
         notes: document.getElementById('tool-notes').value.trim()
       };
 
@@ -3082,7 +3117,9 @@
           const oldTool = tools[idx];
           const changes = [];
           if (oldTool.name !== data.name) changes.push('Name: "' + oldTool.name + '" ➔ "' + data.name + '"');
-          if ((oldTool.quantity || '1') !== (data.quantity || '1')) changes.push('Stückzahl: ' + (oldTool.quantity || '1') + ' ➔ ' + (data.quantity || '1') + ' Stk.');
+          const oldQty = oldTool.status === 'nicht verfügbar' ? '0' : (oldTool.quantity || '1');
+          const newQty = data.status === 'nicht verfügbar' ? '0' : (data.quantity || '1');
+          if (oldQty !== newQty) changes.push('Stückzahl: ' + oldQty + ' ➔ ' + newQty + ' Stk.');
           if (oldTool.status !== data.status) changes.push('Status: ' + oldTool.status + ' ➔ ' + data.status);
           if ((oldTool.location || '') !== (data.location || '')) changes.push('Lagerort: ' + (oldTool.location || '—') + ' ➔ ' + (data.location || '—'));
           if ((oldTool.machine || '') !== (data.machine || '')) changes.push('Maschine: ' + (oldTool.machine || '—') + ' ➔ ' + (data.machine || '—'));
@@ -3161,6 +3198,26 @@
       if (iconInput) {
         iconInput.value = defaultIconForCategory(this.value);
         updateIconPreview();
+      }
+    });
+
+    // Wenn "nicht verfügbar" gewählt wird, Stückzahl automatisch auf 0 setzen und umgekehrt
+    safeOn('tool-status', 'change', function() {
+      const qtyInput = document.getElementById('tool-quantity');
+      if (this.value === 'nicht verfügbar' && qtyInput) {
+        qtyInput.value = '0';
+      } else if (qtyInput && qtyInput.value === '0') {
+        qtyInput.value = '1';
+      }
+    });
+
+    safeOn('tool-quantity', 'input', function() {
+      const statusSelect = document.getElementById('tool-status');
+      const val = parseInt(this.value, 10);
+      if (val === 0 && statusSelect) {
+        statusSelect.value = 'nicht verfügbar';
+      } else if (val > 0 && statusSelect && statusSelect.value === 'nicht verfügbar') {
+        statusSelect.value = 'verfügbar';
       }
     });
 
@@ -4353,11 +4410,30 @@
     initJsonBin().finally(function() {
       fetchBackendData(true);
     });
+
+    // Automatischer Hintergrund-Abgleich alle 5 Sekunden
     if (!pollInterval) {
       pollInterval = setInterval(function() {
         fetchBackendData(true);
-      }, 10000); // Alle 10 Sekunden automatisch aktualisieren
+      }, 5000); // Alle 5 Sekunden automatisch ohne Tastendruck aktualisieren
     }
+
+    // Sofortige Aktualisierung beim Wechseln des Tabs oder Entsperren des Bildschirms
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') {
+        fetchBackendData(true);
+        if (jsonbinConfig.enabled && jsonbinConfig.binId) {
+          pullFromJsonBinDirect(false);
+        }
+      }
+    });
+
+    window.addEventListener('focus', function() {
+      fetchBackendData(true);
+      if (jsonbinConfig.enabled && jsonbinConfig.binId) {
+        pullFromJsonBinDirect(false);
+      }
+    });
   });
   </script>
 </body>
