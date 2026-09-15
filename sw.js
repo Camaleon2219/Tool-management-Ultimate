@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fjk-cnc-cache-v3';
+const CACHE_NAME = 'fjk-cnc-cache-v4';
 
 const STATIC_ASSETS = [
   '/',
@@ -48,15 +48,8 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // API calls are network-first or pass-through
+  // API calls: Pass directly to network without service worker interception
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        return new Response(JSON.stringify({ error: 'Offline - Keine Verbindung zum Werkstatt-Server' }), {
-          headers: { 'Content-Type': 'application/json' }
-        });
-      })
-    );
     return;
   }
 

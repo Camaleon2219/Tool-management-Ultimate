@@ -778,8 +778,9 @@ Antworte AUSSCHLIESSLICH mit gültigem JSON nach folgendem Format:
 });
 
 app.get('/api/ai/analyze-drawing', (req, res) => {
-  res.status(405).json({
-    error: 'Bitte verwenden Sie HTTP POST für die KI-Zeichnungsanalyse.',
+  res.json({
+    status: 'ok',
+    message: 'KI-Zeichnungsanalyse API ist betriebsbereit. Senden Sie eine POST-Anfrage mit Bilddaten zur Analyse.',
     endpoint: '/api/ai/analyze-drawing',
     method: 'POST'
   });
