@@ -16,6 +16,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const TOOLS_FILE = path.join(DATA_DIR, 'tools.json');
 const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
+const JSONBIN_CONFIG_FILE = path.join(DATA_DIR, 'jsonbin.json');
 
 // Ensure data & uploads folders exist
 if (!fs.existsSync(DATA_DIR)) {
@@ -24,6 +25,94 @@ if (!fs.existsSync(DATA_DIR)) {
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
+
+// JSONBin helpers
+function readJsonBinConfig() {
+  try {
+    if (fs.existsSync(JSONBIN_CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(JSONBIN_CONFIG_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Error reading jsonbin config:', e);
+  }
+  return { enabled: false, binId: '', apiKey: '', lastSync: null };
+}
+
+function writeJsonBinConfig(cfg) {
+  try {
+    fs.writeFileSync(JSONBIN_CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Error writing jsonbin config:', e);
+  }
+}
+
+async function pushToJsonBin() {
+  const cfg = readJsonBinConfig();
+  if (!cfg.enabled || !cfg.binId || !cfg.apiKey) return { skipped: true };
+  try {
+    const payload = {
+      tools: readTools(),
+      history: readHistory(),
+      updatedAt: new Date().toISOString()
+    };
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.binId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': cfg.apiKey
+      },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      cfg.lastSync = new Date().toISOString();
+      writeJsonBinConfig(cfg);
+      return { success: true, lastSync: cfg.lastSync };
+    }
+    const errText = await res.text();
+    console.error('JSONBin push error:', res.status, errText);
+    return { success: false, error: errText, status: res.status };
+  } catch (err) {
+    console.error('JSONBin push exception:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+async function pullFromJsonBin() {
+  const cfg = readJsonBinConfig();
+  if (!cfg.enabled || !cfg.binId || !cfg.apiKey) return { skipped: true };
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.binId}/latest`, {
+      method: 'GET',
+      headers: {
+        'X-Master-Key': cfg.apiKey
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const record = data.record || {};
+      if (Array.isArray(record.tools) && record.tools.length > 0) {
+        writeTools(record.tools);
+      }
+      if (Array.isArray(record.history)) {
+        writeHistory(record.history);
+      }
+      cfg.lastSync = new Date().toISOString();
+      writeJsonBinConfig(cfg);
+      return { success: true, count: (record.tools || []).length, lastSync: cfg.lastSync };
+    }
+    const errText = await res.text();
+    return { success: false, error: errText, status: res.status };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// Check and pull from JSONBin on startup if configured
+setTimeout(() => {
+  pullFromJsonBin().then(r => {
+    if (r && r.success) console.log(`Startup: Synced ${r.count} tools from JSONBin.io`);
+  }).catch(() => {});
+}, 1000);
 
 app.use('/uploads', express.static(UPLOADS_DIR));
 
@@ -109,6 +198,8 @@ app.post('/api/tools', (req, res) => {
   const tools = req.body.tools;
   if (Array.isArray(tools)) {
     writeTools(tools);
+    // Background auto-backup to JSONBin if configured
+    pushToJsonBin().catch(() => {});
     return res.json({ success: true, count: tools.length });
   }
   res.status(400).json({ error: 'tools must be an array' });
@@ -137,12 +228,128 @@ app.post('/api/history', (req, res) => {
   history.unshift(newEntry);
   if (history.length > 500) history.length = 500;
   writeHistory(history);
+  // Background auto-backup to JSONBin if configured
+  pushToJsonBin().catch(() => {});
   res.json({ success: true, entry: newEntry });
 });
 
 app.delete('/api/history', (req, res) => {
   writeHistory([]);
+  pushToJsonBin().catch(() => {});
   res.json({ success: true });
+});
+
+// JSONBin Management APIs
+app.get('/api/jsonbin', (req, res) => {
+  const cfg = readJsonBinConfig();
+  res.json({
+    enabled: !!cfg.enabled,
+    binId: cfg.binId || '',
+    hasKey: !!cfg.apiKey,
+    lastSync: cfg.lastSync || null
+  });
+});
+
+app.post('/api/jsonbin/config', async (req, res) => {
+  try {
+    const { binId, apiKey, enabled = true } = req.body;
+    if (!binId || !apiKey) {
+      return res.status(400).json({ error: 'Bin-ID und Master-Key sind erforderlich.' });
+    }
+    // Test access to JSONBin
+    const testRes = await fetch(`https://api.jsonbin.io/v3/b/${binId.trim()}/latest`, {
+      headers: { 'X-Master-Key': apiKey.trim() }
+    });
+    if (!testRes.ok) {
+      const errTxt = await testRes.text();
+      return res.status(400).json({
+        error: `JSONBin Fehler (${testRes.status}): Bitte prüfen Sie Bin-ID und Master-Key.`,
+        details: errTxt
+      });
+    }
+    const data = await testRes.json();
+    const cfg = {
+      enabled: Boolean(enabled),
+      binId: binId.trim(),
+      apiKey: apiKey.trim(),
+      lastSync: new Date().toISOString()
+    };
+    writeJsonBinConfig(cfg);
+
+    // If the remote bin has tools, merge or load them; if remote is empty, push local tools
+    const record = data.record || {};
+    let count = 0;
+    if (Array.isArray(record.tools) && record.tools.length > 0) {
+      writeTools(record.tools);
+      if (Array.isArray(record.history)) writeHistory(record.history);
+      count = record.tools.length;
+    } else {
+      await pushToJsonBin();
+      count = readTools().length;
+    }
+
+    res.json({ success: true, count, lastSync: cfg.lastSync });
+  } catch (err) {
+    res.status(500).json({ error: 'Verbindungsfehler zu JSONBin: ' + err.message });
+  }
+});
+
+app.post('/api/jsonbin/create-bin', async (req, res) => {
+  try {
+    const { apiKey, binName } = req.body;
+    if (!apiKey) {
+      return res.status(400).json({ error: 'Master-Key ist erforderlich.' });
+    }
+    const payload = {
+      tools: readTools(),
+      history: readHistory(),
+      createdFrom: 'FJK CNC Werkzeugverwaltung',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    const createRes = await fetch('https://api.jsonbin.io/v3/b', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': apiKey.trim(),
+        'X-Bin-Name': binName || 'FJK_CNC_Werkzeuge',
+        'X-Bin-Private': 'true'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!createRes.ok) {
+      const errTxt = await createRes.text();
+      return res.status(400).json({
+        error: `Fehler beim Erstellen des Bins (${createRes.status}): ${errTxt}`
+      });
+    }
+    const createData = await createRes.json();
+    const binId = createData.metadata && createData.metadata.id;
+    if (!binId) {
+      return res.status(500).json({ error: 'Keine Bin-ID vom Server zurückgegeben.' });
+    }
+    const cfg = {
+      enabled: true,
+      binId: binId,
+      apiKey: apiKey.trim(),
+      lastSync: new Date().toISOString()
+    };
+    writeJsonBinConfig(cfg);
+    res.json({ success: true, binId: binId, count: payload.tools.length, lastSync: cfg.lastSync });
+  } catch (err) {
+    res.status(500).json({ error: 'Fehler beim Erstellen des Bins: ' + err.message });
+  }
+});
+
+app.post('/api/jsonbin/sync', async (req, res) => {
+  const { direction = 'pull' } = req.body;
+  if (direction === 'push') {
+    const result = await pushToJsonBin();
+    return res.json(result);
+  } else {
+    const result = await pullFromJsonBin();
+    return res.json(result);
+  }
 });
 
 // Image Upload API (saves images directly as files on server disk)
@@ -166,6 +373,37 @@ app.post('/api/upload', (req, res) => {
     console.error('Fehler beim Bildspeichern:', err);
     res.status(500).json({ error: 'Fehler beim Speichern des Bildes auf dem Server' });
   }
+});
+
+// Windows Starter Batch Download (launches app in native Windows App window)
+app.get('/api/download-windows-starter', (req, res) => {
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+  const appUrl = `${protocol}://${host}`;
+
+  const batContent = `@echo off
+chcp 65001 >nul
+title FJK CNC-Werkzeugverwaltung
+echo =================================================================
+echo   FJK CNC-Werkzeugverwaltung wird gestartet...
+echo =================================================================
+
+:: Startet die Web-App in einem sauberen, eigenstaendigen Windows-App-Fenster
+start "" msedge --app="${appUrl}"
+if %errorlevel% equ 0 exit
+
+:: Falls Edge nicht da ist, Google Chrome versuchen
+start "" chrome --app="${appUrl}"
+if %errorlevel% equ 0 exit
+
+:: Standardbrowser als Fallback
+start "" "${appUrl}"
+exit
+`;
+
+  res.setHeader('Content-Type', 'application/x-bat');
+  res.setHeader('Content-Disposition', 'attachment; filename="FJK_CNC_Starten.bat"');
+  res.send(batContent);
 });
 
 // Fallback to index.html

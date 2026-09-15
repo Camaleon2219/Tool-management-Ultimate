@@ -1,0 +1,14 @@
+FJK CNC-Werkzeugverwaltung - Windows Schnellstart
+==================================================
+
+Sie haben 3 Moeglichkeiten:
+
+1. "Desktop_Verknuepfung_erstellen.vbs" (EMPFOHLEN)
+   Doppelklicken Sie einfach auf diese Datei.
+   Sie erstellt automatisch eine fertige Desktop-Verknuepfung auf Ihrem Schreibtisch!
+
+2. "FJK_CNC_Starten.bat"
+   Startet die Werkzeugverwaltung direkt per Doppelklick als eigenstaendiges Programmfenster.
+
+3. "FJK_CNC_Werkzeugverwaltung.url"
+   Eine Standard-Windows-Internetverknuepfung.

@@ -692,9 +692,6 @@
             <span id="current-user-display" style="font-weight:600;">Mitarbeiter</span>
             <button type="button" id="btn-switch-user" class="btn-user-switch" title="Mitarbeiter wechseln">Wechseln</button>
           </div>
-          <button type="button" class="btn btn-sm" id="btn-install-pwa" style="display:inline-flex; align-items:center; gap:0.35rem; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:#fff; border:1px solid #60a5fa; font-weight:600; box-shadow:0 2px 6px rgba(37,99,235,0.35); cursor:pointer;" title="Werkzeugverwaltung als App auf PC oder Handy installieren">
-            <span>📲</span> App installieren
-          </button>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-logout" style="display:none;">🔓 Abmelden</button>
         </div>
       </div>
@@ -994,123 +991,106 @@
       </div>
     </div>
 
-    <!-- Server Config & Storage Info Modal -->
+    <!-- Server & JSONBin Cloud Storage Modal -->
     <div class="modal" id="server-modal">
       <div class="modal-backdrop" id="server-backdrop"></div>
-      <div class="modal-box" style="max-width: 540px;">
+      <div class="modal-box" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header">
-          <h2 class="modal-title">🌐 Datenspeicherung & Server-Status</h2>
+          <h2 class="modal-title">☁️ Cloud-Speicher (JSONBin.io) & Server</h2>
           <button type="button" class="modal-close" id="server-modal-close">&times;</button>
         </div>
         <div style="padding: 0.5rem 0;">
-          <div style="display:flex; align-items:center; gap:0.75rem; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem;">
-            <div style="font-size:1.5rem;">🟢</div>
-            <div>
-              <div style="font-weight:700; color:#22c55e;">Zentraler Werkstatt-Server ist AKTIV</div>
-              <div style="font-size:0.8rem; color:var(--text-muted);">Automatische Live-Synchronisation alle 10 Sekunden</div>
+
+          <!-- Cloud Status Banner -->
+          <div id="jsonbin-status-banner" style="display:flex; align-items:center; gap:0.75rem; background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.3); padding:0.75rem 1rem; border-radius:8px; margin-bottom:1.25rem;">
+            <div style="font-size:1.6rem;" id="jsonbin-status-icon">☁️</div>
+            <div style="flex:1;">
+              <div style="font-weight:700; color:var(--text-title);" id="jsonbin-status-title">JSONBin.io Cloud-Speicher prüfen...</div>
+              <div style="font-size:0.8rem; color:var(--text-muted);" id="jsonbin-status-desc">Dauerhafte Cloud-Sicherung für alle Werkzeuge</div>
             </div>
+            <span id="jsonbin-badge" class="badge badge-warning" style="font-size:0.75rem;">Wird geladen...</span>
           </div>
 
-          <div style="font-size:0.875rem; line-height:1.6; margin-bottom:1.25rem;">
-            <p style="margin-bottom:0.75rem;"><strong>Wo werden deine Daten gespeichert?</strong></p>
-            <ul style="margin:0 0 1rem 1.25rem; padding:0; color:var(--text-base);">
-              <li><strong>1. Auf dem Server (dauerhaft):</strong> Alle Werkzeuge und das Änderungsprotokoll werden auf dem Server in <code>data/tools.json</code> und <code>data/history.json</code> gespeichert. Dadurch haben alle Mitarbeiter an allen PCs immer denselben Stand.</li>
-              <li><strong>2. Lokaler Browser-Cache:</strong> Eine Offline-Kopie wird zusätzlich im Browser gespeichert, damit die Seite verzögerungsfrei startet.</li>
-            </ul>
-
-            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; padding:0.85rem; margin-bottom:1rem;">
-              <strong style="color:var(--text-title); display:block; margin-bottom:0.25rem;">ℹ️ Was ist mit JSONBin.io?</strong>
-              <p style="margin:0; font-size:0.82rem; color:var(--text-muted);">
-                <strong>JSONBin.io wird nicht mehr benötigt!</strong> Die App besitzt nun ein eigenes, integriertes Backend. Es ist kein externer Drittanbieter, kein Konto und kein X-Master-Key mehr erforderlich. Deine Daten verbleiben sicher auf diesem Server.
-              </p>
+          <!-- Section 1: 1-Click Auto-Create Bin -->
+          <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:10px; padding:1rem; margin-bottom:1rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+              <span style="font-size:1.2rem;">✨</span>
+              <strong style="color:var(--text-title); font-size:0.95rem;">Schnellstart: Neuen Cloud-Bin mit 1 Klick anlegen</strong>
             </div>
-          </div>
-
-          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button type="button" class="btn btn-primary" id="btn-force-sync" style="flex:1;">🔄 Jetzt synchronisieren</button>
-            <button type="button" class="btn btn-secondary" id="btn-download-backup" style="flex:1;">💾 Backup als JSON</button>
-          </div>
-          <div style="margin-top:0.75rem; text-align:right;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-server-cancel">Schließen</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- PWA Installation Guide Modal -->
-    <div class="modal" id="install-modal">
-      <div class="modal-backdrop" id="install-backdrop"></div>
-      <div class="modal-box" style="max-width: 560px;">
-        <div class="modal-header">
-          <div style="display:flex; align-items:center; gap:0.6rem;">
-            <img src="/icons/icon-192.png" alt="App Icon" style="width:36px; height:36px; border-radius:8px; border:1px solid rgba(255,255,255,0.2);">
-            <h2 class="modal-title">FJK CNC als App installieren</h2>
-          </div>
-          <button type="button" class="modal-close" id="install-modal-close">&times;</button>
-        </div>
-        <div style="padding: 0.5rem 0;">
-          <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem; line-height:1.5;">
-            Installiere die Werkzeugverwaltung direkt auf deinem <strong>Werkstatt-PC, Laptop, Smartphone oder Tablet</strong>. Die App startet anschließend wie ein eigenständiges Programm im Vollbild ohne störende Browserleiste.
-          </p>
-
-          <!-- iFrame Notice if running in preview window -->
-          <div id="install-iframe-banner" style="display:none; background:rgba(245,158,11,0.12); border:1px solid #f59e0b; border-radius:8px; padding:1rem; margin-bottom:1.25rem;">
-            <div style="font-weight:700; color:#fbbf24; margin-bottom:0.4rem; display:flex; align-items:center; gap:0.4rem; font-size:0.95rem;">
-              ⚠️ Du bist aktuell im Vorschau-Fenster (iFrame)
-            </div>
-            <p style="font-size:0.85rem; color:var(--text-base); margin-bottom:0.75rem; line-height:1.45;">
-              Web-Browser (Chrome, Edge, Safari) sperren die App-Installation aus Sicherheitsgründen, wenn eine Website in einem <strong>Vorschau-Fenster</strong> eingebettet ist.<br>
-              <strong>Lösung:</strong> Klicke auf den Button unten, um die App in einem <strong>eigenen Tab</strong> zu öffnen. Dort erscheint sofort die normale Installation!
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem; line-height:1.4;">
+              Haben Sie einen kostenlosen Account auf <strong>jsonbin.io</strong>? Fügen Sie hier einfach Ihren <strong>Master Key</strong> ein. Die App erstellt den Cloud-Bin automatisch, lädt alle aktuellen Werkzeuge hoch und verbindet sich!
             </p>
-            <a id="btn-open-in-tab" href="" target="_blank" class="btn btn-primary" style="display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; text-decoration:none; font-weight:700; width:100%; box-shadow:0 3px 10px rgba(37,99,235,0.4); padding:0.65rem 1rem;">
-              ↗️ In eigenem Tab öffnen &amp; installieren
-            </a>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <input type="password" id="jsonbin-quick-masterkey" placeholder="JSONBin Master-Key ($2a$10$...)" class="form-input" style="flex:1 1 240px; font-family:monospace; font-size:0.85rem;">
+              <button type="button" class="btn btn-primary" id="btn-jsonbin-autocreate" style="flex:1 1 200px; display:inline-flex; align-items:center; justify-content:center; gap:0.4rem;">
+                <span>✨</span> Bin jetzt anlegen & verbinden
+              </button>
+            </div>
           </div>
 
-          <div id="install-native-banner" style="display:none; background:rgba(37,99,235,0.15); border:1px solid #3b82f6; border-radius:8px; padding:1rem; margin-bottom:1.25rem; text-align:center;">
-            <p style="font-weight:600; color:#93c5fd; margin-bottom:0.75rem;">1-Klick Installation für dieses Gerät verfügbar!</p>
-            <button type="button" class="btn btn-primary" id="btn-trigger-install" style="font-size:1rem; padding:0.65rem 1.5rem; width:100%; box-shadow:0 4px 12px rgba(37,99,235,0.4);">
-              📲 Jetzt direkt installieren
+          <!-- Section 2: Connect Existing Bin -->
+          <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:10px; padding:1rem; margin-bottom:1rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+              <span style="font-size:1.2rem;">🔗</span>
+              <strong style="color:var(--text-title); font-size:0.95rem;">Bestehenden JSONBin-Bin verbinden</strong>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem; line-height:1.4;">
+              Geben Sie Ihre vorhandene Bin-ID und Ihren Master-Key ein, um die Werkzeuge aus der Cloud zu synchronisieren:
+            </p>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-bottom:0.75rem;">
+              <div>
+                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Bin-ID (24 Zeichen):</label>
+                <input type="text" id="jsonbin-manual-binid" placeholder="z.B. 66e01a47e41b4d34e427189a" class="form-input" style="font-family:monospace; font-size:0.85rem;">
+              </div>
+              <div>
+                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Master-Key (X-Master-Key):</label>
+                <input type="password" id="jsonbin-manual-apikey" placeholder="$2a$10$..." class="form-input" style="font-family:monospace; font-size:0.85rem;">
+              </div>
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary" id="btn-jsonbin-connect" style="flex:1;">
+                🔗 Verbinden & Daten laden
+              </button>
+              <button type="button" class="btn btn-secondary" id="btn-jsonbin-test" style="flex:1;">
+                ⚡ Verbindung testen
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 3: Active Actions & Manual Sync -->
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem;">
+            <button type="button" class="btn btn-secondary" id="btn-jsonbin-push-tools" style="flex:1 1 45%; font-size:0.85rem;">
+              📤 Jetzt zu JSONBin hochladen
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-jsonbin-pull-tools" style="flex:1 1 45%; font-size:0.85rem;">
+              📥 Von JSONBin neu laden
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-force-sync" style="flex:1 1 45%; font-size:0.85rem;">
+              🔄 Server-Abgleich
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-download-backup" style="flex:1 1 45%; font-size:0.85rem;">
+              💾 JSON-Backup-Datei
             </button>
           </div>
 
-          <div style="display:flex; flex-direction:column; gap:0.85rem; font-size:0.875rem;">
-            <!-- Windows / Mac -->
-            <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:8px; padding:0.85rem;">
-              <strong style="color:#60a5fa; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
-                💻 Windows PC / Mac (Google Chrome / Microsoft Edge)
-              </strong>
-              <p style="margin:0; color:var(--text-base); line-height:1.45;">
-                Klicke in der Adressleiste oben rechts auf das <strong>Installieren-Symbol</strong> (🖥️ App installieren) oder drücke im Browsermenü (3 Punkte) auf <strong>„FJK CNC installieren“</strong>.
-              </p>
-            </div>
-
-            <!-- Android -->
-            <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:8px; padding:0.85rem;">
-              <strong style="color:#4ade80; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
-                📱 Android (Chrome / Samsung Browser)
-              </strong>
-              <p style="margin:0; color:var(--text-base); line-height:1.45;">
-                Tippe oben rechts auf das <strong>Drei-Punkte-Menü (⋮)</strong> und wähle <strong>„App installieren“</strong> oder <strong>„Zum Startbildschirm hinzufügen“</strong>.
-              </p>
-            </div>
-
-            <!-- iOS -->
-            <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:8px; padding:0.85rem;">
-              <strong style="color:#f472b6; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
-                🍎 iPhone / iPad (Safari)
-              </strong>
-              <p style="margin:0; color:var(--text-base); line-height:1.45;">
-                1. Tippe unten in Safari auf das <strong>Teilen-Symbol</strong> (Viereck mit Pfeil nach oben ⎋).<br>
-                2. Scrolle in der Liste nach unten und wähle <strong>„Zum Home-Bildschirm“</strong>.<br>
-                3. Tippe oben rechts auf <strong>„Hinzufügen“</strong>.
-              </p>
+          <!-- Section 4: 3-Step Guide -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:0.85rem; margin-bottom:1rem; font-size:0.8rem; line-height:1.5;">
+            <strong style="color:var(--text-title); display:block; margin-bottom:0.35rem;">💡 In 3 Schritten zu JSONBin.io:</strong>
+            <ol style="margin:0 0 0.5rem 1.25rem; padding:0; color:var(--text-base);">
+              <li>Kostenlos registrieren auf <a href="https://jsonbin.io" target="_blank" rel="noopener noreferrer" style="color:var(--primary); text-decoration:underline;">jsonbin.io</a></li>
+              <li>Im Menü auf <strong>API Keys</strong> klicken und den <strong>Master Key</strong> kopieren</li>
+              <li>Oben bei <strong>Schnellstart</strong> einfügen und auf <em>„Bin jetzt anlegen“</em> klicken</li>
+            </ol>
+            <div style="color:var(--success); font-size:0.75rem;">
+              🛡️ <strong>Ergebnis:</strong> Ihre Werkzeuge sind für immer sicher in der Cloud. Selbst wenn Sie den Browserverlauf oder LocalStorage in Edge leeren, bleiben alle Werkzeugdaten vollständig erhalten!
             </div>
           </div>
 
-          <div style="margin-top:1.25rem; text-align:right;">
-            <button type="button" class="btn btn-secondary" id="btn-install-modal-close">Schließen</button>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem;">
+            <button type="button" class="btn btn-danger btn-sm" id="btn-jsonbin-disconnect" style="display:none;">Cloud-Verbindung trennen</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-server-cancel" style="margin-left:auto;">Schließen</button>
           </div>
+
         </div>
       </div>
     </div>
@@ -1352,9 +1332,231 @@
     let deleteId = null;
     let currentEditId = null;
     let currentImageBase64 = '';
-    let serverConfig = { key: '', binId: '' };
     let isSyncing = false;
     let pollInterval = null;
+
+    // ==================== JSONBIN.IO CLOUD SYNC STATE ====================
+    let jsonbinConfig = {
+      enabled: false,
+      binId: '',
+      apiKey: '',
+      lastSync: null
+    };
+
+    function loadJsonBinConfigLocal() {
+      try {
+        const stored = localStorage.getItem('fjk_cnc_jsonbin_cfg_v1');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed === 'object') {
+            jsonbinConfig = Object.assign(jsonbinConfig, parsed);
+          }
+        }
+      } catch(e) {}
+    }
+
+    function saveJsonBinConfigLocal() {
+      try {
+        localStorage.setItem('fjk_cnc_jsonbin_cfg_v1', JSON.stringify(jsonbinConfig));
+      } catch(e) {}
+    }
+
+    function updateJsonBinUI() {
+      const banner = document.getElementById('jsonbin-status-banner');
+      const icon = document.getElementById('jsonbin-status-icon');
+      const title = document.getElementById('jsonbin-status-title');
+      const desc = document.getElementById('jsonbin-status-desc');
+      const badge = document.getElementById('jsonbin-badge');
+      const disconnectBtn = document.getElementById('btn-jsonbin-disconnect');
+      const binInput = document.getElementById('jsonbin-manual-binid');
+      const keyInput = document.getElementById('jsonbin-manual-apikey');
+
+      if (binInput && jsonbinConfig.binId) binInput.value = jsonbinConfig.binId;
+      if (keyInput && jsonbinConfig.apiKey) keyInput.value = jsonbinConfig.apiKey;
+
+      if (jsonbinConfig.enabled && jsonbinConfig.binId) {
+        if (banner) {
+          banner.style.background = 'rgba(34,197,94,0.12)';
+          banner.style.borderColor = 'rgba(34,197,94,0.3)';
+        }
+        if (icon) icon.textContent = '🟢';
+        if (title) title.innerHTML = 'Verbunden mit JSONBin-Bin: <code style="background:rgba(0,0,0,0.3); padding:0.1rem 0.35rem; border-radius:4px;">' + escapeAttr(jsonbinConfig.binId) + '</code>';
+        const syncText = jsonbinConfig.lastSync ? new Date(jsonbinConfig.lastSync).toLocaleString('de-DE') : 'Aktiv';
+        if (desc) desc.textContent = 'Dauerhaft in der Cloud gesichert • Letzter Abgleich: ' + syncText;
+        if (badge) {
+          badge.className = 'badge badge-success';
+          badge.textContent = 'Cloud Aktiv';
+        }
+        if (disconnectBtn) disconnectBtn.style.display = 'inline-block';
+      } else {
+        if (banner) {
+          banner.style.background = 'rgba(245,158,11,0.12)';
+          banner.style.borderColor = 'rgba(245,158,11,0.3)';
+        }
+        if (icon) icon.textContent = '☁️';
+        if (title) title.textContent = 'JSONBin.io Cloud-Speicher nicht eingerichtet';
+        if (desc) desc.textContent = 'Geben Sie unten Ihren Master-Key ein, um die Cloud-Sicherung dauerhaft zu aktivieren.';
+        if (badge) {
+          badge.className = 'badge badge-warning';
+          badge.textContent = 'Nur Lokal';
+        }
+        if (disconnectBtn) disconnectBtn.style.display = 'none';
+      }
+      updateSyncIndicator(jsonbinConfig.enabled && jsonbinConfig.binId ? 'online' : 'server');
+    }
+
+    async function initJsonBin() {
+      loadJsonBinConfigLocal();
+
+      // Check URL parameters (e.g. ?bin=...&key=...) for instant 1-click configuration
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const pBin = params.get('bin');
+        const pKey = params.get('key');
+        if (pBin && pKey) {
+          jsonbinConfig.enabled = true;
+          jsonbinConfig.binId = pBin.trim();
+          jsonbinConfig.apiKey = pKey.trim();
+          jsonbinConfig.lastSync = new Date().toISOString();
+          saveJsonBinConfigLocal();
+          fetch('/api/jsonbin/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(jsonbinConfig)
+          }).catch(() => {});
+        }
+      } catch(e) {}
+
+      // Check server's stored jsonbin config
+      try {
+        const res = await fetch('/api/jsonbin');
+        if (res.ok) {
+          const srvCfg = await res.json();
+          if (srvCfg.enabled && srvCfg.binId) {
+            jsonbinConfig.enabled = true;
+            jsonbinConfig.binId = srvCfg.binId;
+            jsonbinConfig.lastSync = srvCfg.lastSync;
+            saveJsonBinConfigLocal();
+          } else if (jsonbinConfig.enabled && jsonbinConfig.binId && jsonbinConfig.apiKey) {
+            // Server hat noch keine Config, aber Client hat sie: an Server senden
+            fetch('/api/jsonbin/config', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(jsonbinConfig)
+            }).catch(() => {});
+          }
+        }
+      } catch(e) {}
+
+      updateJsonBinUI();
+    }
+
+    // Direct and Backend push to JSONBin
+    async function pushToJsonBinDirect(manual) {
+      if (!jsonbinConfig.enabled || !jsonbinConfig.binId) return;
+      try {
+        const payload = {
+          tools: tools,
+          history: historyEntries,
+          updatedAt: new Date().toISOString()
+        };
+
+        // 1. Direkt im Browser an JSONBin senden (falls Key im Browser vorhanden)
+        if (jsonbinConfig.apiKey) {
+          fetch('https://api.jsonbin.io/v3/b/' + jsonbinConfig.binId, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Master-Key': jsonbinConfig.apiKey
+            },
+            body: JSON.stringify(payload)
+          }).catch(function(err) {
+            console.warn('Direct browser push to JSONBin failed:', err);
+          });
+        }
+
+        // 2. Auch Backend anweisen zu sichern
+        const sRes = await fetch('/api/jsonbin/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ direction: 'push' })
+        });
+
+        jsonbinConfig.lastSync = new Date().toISOString();
+        saveJsonBinConfigLocal();
+        updateJsonBinUI();
+        if (manual) showToast('📤 ' + tools.length + ' Werkzeuge erfolgreich zu JSONBin hochgeladen!', 'success');
+      } catch (err) {
+        console.warn('JSONBin push error:', err);
+        if (manual) showToast('❌ Fehler beim Hochladen zu JSONBin: ' + err.message, 'warning');
+      }
+    }
+
+    // Direct and Backend pull from JSONBin
+    async function pullFromJsonBinDirect(manual) {
+      if (!jsonbinConfig.binId) return;
+      try {
+        let loadedTools = null;
+        let loadedHistory = null;
+
+        // Versuche 1: Über Backend
+        try {
+          const sRes = await fetch('/api/jsonbin/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ direction: 'pull' })
+          });
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            if (sData.success) {
+              const tRes = await fetch('/api/tools');
+              if (tRes.ok) {
+                const tData = await tRes.json();
+                if (Array.isArray(tData.tools) && tData.tools.length > 0) {
+                  loadedTools = tData.tools;
+                }
+              }
+            }
+          }
+        } catch(e) {}
+
+        // Versuche 2: Direkt aus dem Browser abrufen (falls Backend nichts lieferte)
+        if (!loadedTools && jsonbinConfig.apiKey) {
+          const bRes = await fetch('https://api.jsonbin.io/v3/b/' + jsonbinConfig.binId + '/latest', {
+            headers: { 'X-Master-Key': jsonbinConfig.apiKey }
+          });
+          if (bRes.ok) {
+            const bData = await bRes.json();
+            const rec = bData.record || {};
+            if (Array.isArray(rec.tools) && rec.tools.length > 0) {
+              loadedTools = rec.tools;
+              if (Array.isArray(rec.history)) loadedHistory = rec.history;
+            }
+          }
+        }
+
+        if (loadedTools && loadedTools.length > 0) {
+          tools = loadedTools;
+          if (loadedHistory) historyEntries = loadedHistory;
+          saveToolsLocal();
+          saveToolsToBackend();
+          renderStats();
+          renderGrid();
+          jsonbinConfig.lastSync = new Date().toISOString();
+          saveJsonBinConfigLocal();
+          updateJsonBinUI();
+          if (manual) showToast('📥 ' + tools.length + ' Werkzeuge aus JSONBin geladen!', 'success');
+          return true;
+        } else {
+          if (manual) showToast('ℹ️ Der Cloud-Bin enthält noch keine Werkzeuge.', 'info');
+          return false;
+        }
+      } catch (err) {
+        console.warn('JSONBin pull error:', err);
+        if (manual) showToast('❌ Fehler beim Laden von JSONBin: ' + err.message, 'warning');
+        return false;
+      }
+    }
 
     const statusClasses = {
       'neu': 'status-neu',
@@ -1383,12 +1585,17 @@
               renderGrid();
             }
           } else if (tools.length === 0) {
-            // Server und lokaler Speicher sind beide leer (Erststart): Demo-Werkzeug anlegen
-            tools = demoTools.slice();
-            saveToolsLocal();
-            await saveToolsToBackend();
-            renderStats();
-            renderGrid();
+            // Falls Backend noch keine Werkzeuge hat, aber JSONBin eingerichtet ist: aus JSONBin wiederherstellen!
+            if (jsonbinConfig.enabled && jsonbinConfig.binId) {
+              await pullFromJsonBinDirect(false);
+            } else {
+              // Erststart ohne Backend & ohne JSONBin: Demo-Werkzeug anlegen
+              tools = demoTools.slice();
+              saveToolsLocal();
+              await saveToolsToBackend();
+              renderStats();
+              renderGrid();
+            }
           }
         }
 
@@ -1405,9 +1612,13 @@
             }
           }
         }
-        updateSyncIndicator('online');
+        updateSyncIndicator(jsonbinConfig.enabled && jsonbinConfig.binId ? 'online' : 'server');
       } catch(err) {
         if (!silent) console.warn('Sync poll error:', err);
+        // Fallback auf JSONBin wenn lokaler Server offline ist
+        if (jsonbinConfig.enabled && jsonbinConfig.binId && (!tools || tools.length === 0)) {
+          pullFromJsonBinDirect(false);
+        }
         updateSyncIndicator('offline');
       }
     }
@@ -1420,7 +1631,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tools: tools, updatedAt: new Date().toISOString() })
         });
-        if (res.ok) updateSyncIndicator('online');
+        if (res.ok) updateSyncIndicator(jsonbinConfig.enabled && jsonbinConfig.binId ? 'online' : 'server');
         else updateSyncIndicator('offline');
       } catch(err) {
         console.warn('Backend save error:', err);
@@ -1458,14 +1669,20 @@
       const btn = document.getElementById('btn-sync');
       const text = document.getElementById('sync-text');
       if (!btn || !text) return;
-      if (status === 'online') {
+      if (jsonbinConfig && jsonbinConfig.enabled && jsonbinConfig.binId) {
         btn.className = 'sync-status online';
+        btn.title = 'JSONBin.io Cloud-Speicher aktiv (Bin: ' + jsonbinConfig.binId + ') - Klick für Einstellungen';
+        text.textContent = '☁️ JSONBin Aktiv';
+      } else if (status === 'online' || status === 'server') {
+        btn.className = 'sync-status online';
+        btn.title = 'Mit Werkstatt-Server verbunden - Klick für Cloud-Einrichtung';
         text.textContent = 'Live Server';
       } else if (status === 'syncing') {
         btn.className = 'sync-status syncing';
         text.textContent = 'Sync...';
       } else {
         btn.className = 'sync-status offline';
+        btn.title = 'Offline / Lokaler Speicher - Klick für Cloud-Einrichtung';
         text.textContent = 'Offline (Lokal)';
       }
     }
@@ -1492,7 +1709,7 @@
             tools = JSON.parse(v4Stored);
             saveToolsLocal();
           } else {
-            // Wenn LocalStorage geleert wurde, auf Server warten (nicht mit leeren Demo-Tools überschreiben)
+            // Wenn LocalStorage geleert wurde, auf Server & JSONBin warten
             tools = [];
           }
         }
@@ -1506,6 +1723,9 @@
     async function saveTools() {
       saveToolsLocal();
       await saveToolsToBackend();
+      if (jsonbinConfig && jsonbinConfig.enabled && jsonbinConfig.binId) {
+        pushToJsonBinDirect(false);
+      }
     }
 
     function defaultIconForCategory(cat) {
@@ -1834,12 +2054,14 @@
     function openDeleteModal() { document.getElementById('delete-modal').classList.add('active'); }
     function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('active'); deleteId = null; }
     function openServerModal() {
-      document.getElementById('server-key').value = serverConfig.key || '';
-      document.getElementById('server-bin').value = serverConfig.binId || '';
-      updateDisconnectButton();
-      document.getElementById('server-modal').classList.add('active');
+      updateJsonBinUI();
+      const modal = document.getElementById('server-modal');
+      if (modal) modal.classList.add('active');
     }
-    function closeServerModal() { document.getElementById('server-modal').classList.remove('active'); }
+    function closeServerModal() {
+      const modal = document.getElementById('server-modal');
+      if (modal) modal.classList.remove('active');
+    }
 
     function updateIconPreview() {
       const val = document.getElementById('tool-icon').value;
@@ -2275,7 +2497,7 @@
       }
     });
 
-    // Server modal events
+    // Server & JSONBin modal events
     safeOn('btn-sync', 'click', openServerModal);
     safeOn('server-close', 'click', closeServerModal);
     safeOn('server-modal-close', 'click', closeServerModal);
@@ -2283,11 +2505,162 @@
     safeOn('server-cancel', 'click', closeServerModal);
     safeOn('btn-server-cancel', 'click', closeServerModal);
 
+    // 1-Click Auto-Create Bin
+    safeOn('btn-jsonbin-autocreate', 'click', async function() {
+      const keyInput = document.getElementById('jsonbin-quick-masterkey');
+      const key = keyInput ? keyInput.value.trim() : '';
+      if (!key) {
+        showToast('⚠️ Bitte geben Sie Ihren JSONBin Master-Key ein', 'warning');
+        return;
+      }
+      const btn = document.getElementById('btn-jsonbin-autocreate');
+      const origText = btn.innerHTML;
+      btn.innerHTML = '⏳ Erstelle Cloud-Bin...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/jsonbin/create-bin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: key })
+        });
+        const data = await res.json();
+        if (data.success && data.binId) {
+          jsonbinConfig.enabled = true;
+          jsonbinConfig.binId = data.binId;
+          jsonbinConfig.apiKey = key;
+          jsonbinConfig.lastSync = new Date().toISOString();
+          saveJsonBinConfigLocal();
+          updateJsonBinUI();
+          if (keyInput) keyInput.value = '';
+          showToast('🎉 Cloud-Bin erstellt! ' + tools.length + ' Werkzeuge gesichert.', 'success');
+        } else {
+          showToast('❌ ' + (data.error || 'Erstellung fehlgeschlagen'), 'warning');
+        }
+      } catch (err) {
+        showToast('❌ Verbindungsfehler: ' + err.message, 'warning');
+      } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+      }
+    });
+
+    // Connect Existing Bin
+    safeOn('btn-jsonbin-connect', 'click', async function() {
+      const binInput = document.getElementById('jsonbin-manual-binid');
+      const keyInput = document.getElementById('jsonbin-manual-apikey');
+      const binId = binInput ? binInput.value.trim() : '';
+      const apiKey = keyInput ? keyInput.value.trim() : '';
+
+      if (!binId) {
+        showToast('⚠️ Bitte geben Sie eine Bin-ID ein', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('btn-jsonbin-connect');
+      const origText = btn.textContent;
+      btn.textContent = '⏳ Verbinde...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/jsonbin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: true, binId: binId, apiKey: apiKey })
+        });
+        const data = await res.json();
+        if (data.success) {
+          jsonbinConfig.enabled = true;
+          jsonbinConfig.binId = binId;
+          jsonbinConfig.apiKey = apiKey;
+          jsonbinConfig.lastSync = new Date().toISOString();
+          saveJsonBinConfigLocal();
+          updateJsonBinUI();
+
+          // Werkzeuge aus dem neu verbundenen Bin laden
+          await pullFromJsonBinDirect(true);
+          showToast('✅ Erfolgreich mit JSONBin verbunden!', 'success');
+        } else {
+          showToast('❌ Verbindung fehlgeschlagen: ' + (data.error || 'Ungültige Bin-ID oder Key'), 'warning');
+        }
+      } catch (err) {
+        showToast('❌ Verbindungsfehler: ' + err.message, 'warning');
+      } finally {
+        btn.textContent = origText;
+        btn.disabled = false;
+      }
+    });
+
+    // Test Connection
+    safeOn('btn-jsonbin-test', 'click', async function() {
+      const binInput = document.getElementById('jsonbin-manual-binid');
+      const keyInput = document.getElementById('jsonbin-manual-apikey');
+      const binId = (binInput ? binInput.value.trim() : '') || jsonbinConfig.binId;
+      const apiKey = (keyInput ? keyInput.value.trim() : '') || jsonbinConfig.apiKey;
+
+      if (!binId) {
+        showToast('⚠️ Keine Bin-ID zum Testen vorhanden', 'warning');
+        return;
+      }
+      const btn = document.getElementById('btn-jsonbin-test');
+      btn.textContent = '⚡ Teste...';
+      try {
+        const res = await fetch('/api/jsonbin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: true, binId: binId, apiKey: apiKey })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('✅ Verbindung erfolgreich! Bin ist erreichbar.', 'success');
+        } else {
+          showToast('❌ Verbindung fehlgeschlagen: ' + (data.error || 'Fehler'), 'warning');
+        }
+      } catch(e) {
+        showToast('❌ Testfehler: ' + e.message, 'warning');
+      } finally {
+        btn.textContent = '⚡ Verbindung testen';
+      }
+    });
+
+    // Push to JSONBin
+    safeOn('btn-jsonbin-push-tools', 'click', async function() {
+      const btn = document.getElementById('btn-jsonbin-push-tools');
+      btn.textContent = '⏳ Lade hoch...';
+      await pushToJsonBinDirect(true);
+      btn.textContent = '📤 Jetzt zu JSONBin hochladen';
+    });
+
+    // Pull from JSONBin
+    safeOn('btn-jsonbin-pull-tools', 'click', async function() {
+      const btn = document.getElementById('btn-jsonbin-pull-tools');
+      btn.textContent = '⏳ Lade herunter...';
+      await pullFromJsonBinDirect(true);
+      btn.textContent = '📥 Von JSONBin neu laden';
+    });
+
+    // Disconnect JSONBin
+    safeOn('btn-jsonbin-disconnect', 'click', async function() {
+      if (confirm('Möchten Sie die Verbindung zu JSONBin wirklich trennen? Die aktuellen Werkzeuge bleiben auf diesem Gerät erhalten.')) {
+        jsonbinConfig = { enabled: false, binId: '', apiKey: '', lastSync: null };
+        saveJsonBinConfigLocal();
+        try {
+          await fetch('/api/jsonbin/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: false, binId: '', apiKey: '' })
+          });
+        } catch(e) {}
+        updateJsonBinUI();
+        showToast('ℹ️ JSONBin-Verbindung getrennt', 'info');
+      }
+    });
+
     safeOn('btn-force-sync', 'click', async function() {
       const btn = document.getElementById('btn-force-sync');
       if (btn) btn.textContent = '⏳ Synchronisiere...';
       await fetchBackendData(false);
-      if (btn) btn.textContent = '🔄 Jetzt synchronisieren';
+      if (btn) btn.textContent = '🔄 Server-Abgleich';
       showToast('✅ Daten erfolgreich mit Server abgeglichen', 'success');
     });
 
@@ -2318,108 +2691,7 @@
       }
     });
 
-    // ==================== PWA INSTALLATION ====================
-    let deferredPrompt = null;
-    const btnInstallPwa = document.getElementById('btn-install-pwa');
-    const installModal = document.getElementById('install-modal');
-    const installNativeBanner = document.getElementById('install-native-banner');
-    const installIframeBanner = document.getElementById('install-iframe-banner');
-    const btnOpenInTab = document.getElementById('btn-open-in-tab');
-
-    // Erkennen ob die App in einem iFrame (Vorschau) eingebettet ist
-    const isInIframe = (function() {
-      try {
-        return window.self !== window.top;
-      } catch (e) {
-        return true;
-      }
-    })();
-
-    // Erkennen ob die App bereits als installierte Standalone-App läuft
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                         window.navigator.standalone === true;
-
-    if (isStandalone) {
-      if (btnInstallPwa) btnInstallPwa.style.display = 'none';
-    } else {
-      if (btnInstallPwa) btnInstallPwa.style.display = 'inline-flex';
-    }
-
-    // Wenn im Browser-Vollbild ein echter PWA-Prompt möglich ist
-    window.addEventListener('beforeinstallprompt', function(e) {
-      e.preventDefault();
-      deferredPrompt = e;
-      if (btnInstallPwa && !isStandalone) {
-        btnInstallPwa.style.display = 'inline-flex';
-      }
-      if (installNativeBanner && !isInIframe) {
-        installNativeBanner.style.display = 'block';
-      }
-    });
-
-    window.addEventListener('appinstalled', function() {
-      deferredPrompt = null;
-      if (btnInstallPwa) btnInstallPwa.style.display = 'none';
-      if (installModal) installModal.classList.remove('active');
-      showToast('🎉 FJK CNC wurde erfolgreich als App installiert!', 'success');
-    });
-
-    function openInstallModal() {
-      if (!installModal) return;
-
-      if (isInIframe) {
-        if (installIframeBanner) {
-          installIframeBanner.style.display = 'block';
-          if (btnOpenInTab) {
-            btnOpenInTab.href = window.location.href;
-          }
-        }
-        if (installNativeBanner) installNativeBanner.style.display = 'none';
-      } else {
-        if (installIframeBanner) installIframeBanner.style.display = 'none';
-        if (deferredPrompt && installNativeBanner) {
-          installNativeBanner.style.display = 'block';
-        }
-      }
-
-      installModal.classList.add('active');
-    }
-
-    function closeInstallModal() {
-      if (installModal) installModal.classList.remove('active');
-    }
-
-    async function triggerInstallPrompt() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        if (choice.outcome === 'accepted') {
-          showToast('🚀 App wird installiert...', 'success');
-          deferredPrompt = null;
-          if (btnInstallPwa) btnInstallPwa.style.display = 'none';
-          closeInstallModal();
-        }
-      } else {
-        openInstallModal();
-      }
-    }
-
-    safeOn('btn-install-pwa', 'click', function() {
-      if (isInIframe) {
-        openInstallModal();
-      } else if (deferredPrompt) {
-        triggerInstallPrompt();
-      } else {
-        openInstallModal();
-      }
-    });
-
-    safeOn('btn-trigger-install', 'click', triggerInstallPrompt);
-    safeOn('install-modal-close', 'click', closeInstallModal);
-    safeOn('btn-install-modal-close', 'click', closeInstallModal);
-    safeOn('install-backdrop', 'click', closeInstallModal);
-
-    // Service Worker registrieren für Offline-Unterstützung & PWA-Installierbarkeit
+    // Service Worker registrieren für Offline-Unterstützung & Schnelligkeit
     if ('serviceWorker' in navigator) {
       const registerSW = function() {
         navigator.serviceWorker.register('/sw.js').then(function(reg) {
@@ -2443,6 +2715,9 @@
     renderUserChipsAndDatalist();
     renderStats();
     renderGrid();
+
+    // Cloud-Sync (JSONBin) initialisieren
+    initJsonBin();
 
     // Initiale Synchronisation mit dem Server & Polling für Mehrbenutzerbetrieb
     fetchBackendData(true);

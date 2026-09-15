@@ -1,0 +1,63 @@
+[
+  {
+    "id": "mtnf97ot7xrlbrfnvj8",
+    "name": "VHM-Bohrer Ø6,1 mm lang",
+    "category": "VHM-Bohrer",
+    "status": "neu",
+    "icon": "⚙️",
+    "image": "",
+    "imageUrl": "https://i.postimg.cc/bNzCPqgD/ADX-removebg-preview.png",
+    "link": "https://dormerpramet.com/uk-ie/de/p/5970433",
+    "diameter": "6",
+    "shank": "6",
+    "length": "57",
+    "flutes": "4",
+    "coating": "TIAIN",
+    "material": "HSS-E",
+    "manufacturer": "DORMER",
+    "sku": "5511-6.000",
+    "magazine": "T12",
+    "holder": "",
+    "zLength": "",
+    "coolant": "Innenkühlung",
+    "machine": "",
+    "location": "",
+    "quantity": "3",
+    "notes": "vc",
+    "createdAt": "2026-09-04T20:44:04.013Z",
+    "createdBy": "G. Palacios",
+    "updatedAt": "2026-09-04T21:03:59.187Z",
+    "updatedBy": "T. Weber",
+    "lastChangeSummary": "Werkzeugdaten überprüft",
+    "history": [
+      {
+        "timestamp": "2026-09-04T21:03:59.187Z",
+        "userName": "T. Weber",
+        "details": "Werkzeugdaten überprüft",
+        "changes": []
+      },
+      {
+        "timestamp": "2026-09-04T20:45:59.183Z",
+        "userName": "T. Weber",
+        "details": "Werkzeugdaten überprüft",
+        "changes": []
+      },
+      {
+        "timestamp": "2026-09-04T20:44:24.439Z",
+        "userName": "G. Palacios",
+        "details": "Name: \"VHM-Bohrer Ø6,0 mm lang\" ➔ \"VHM-Bohrer Ø6,1 mm lang\"",
+        "changes": [
+          "Name: \"VHM-Bohrer Ø6,0 mm lang\" ➔ \"VHM-Bohrer Ø6,1 mm lang\""
+        ]
+      },
+      {
+        "timestamp": "2026-09-04T20:44:04.013Z",
+        "userName": "G. Palacios",
+        "details": "Neu angelegt (VHM-Bohrer, 3 Stk. in Lager)",
+        "changes": [
+          "Neu angelegt"
+        ]
+      }
+    ]
+  }
+]
