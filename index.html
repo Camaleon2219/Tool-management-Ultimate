@@ -676,7 +676,7 @@
   <div>
           <div>
             <div class="brand-title">CNC-WERKZEUGVERWALTUNG</div>
-            <div class="brand-subtitle">Bohrer · Fräser · Gewindebohrer · Reibahlen · Senker</div>
+            <div class="brand-subtitle">Bohrer · Fräser · Planfräser · Wendeplatten · Schrauben</div>
           </div>
         </div>
         <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
@@ -716,14 +716,19 @@
         <option value="VHM-Bohrer">VHM-Bohrer</option>
         <option value="Fräser">Fräser</option>
         <option value="VHM-Fräser">VHM-Fräser</option>
+        <option value="Planfräser">Planfräser</option>
+        <option value="Radiusfräser">Radiusfräser</option>
+        <option value="Sonderfräser">Sonderfräser</option>
         <option value="Gewindebohrer">Gewindebohrer</option>
+        <option value="Gewindefräser">Gewindefräser</option>
         <option value="Senker">Senker</option>
         <option value="Reibahle">Reibahle</option>
-        <option value="Gewindefräser">Gewindefräser</option>
         <option value="T-Nutenfräser">T-Nutenfräser</option>
         <option value="Einstechfräser">Einstechfräser</option>
-        <option value="Sonstiges">Sonstiges</option>
+        <option value="Wendeplatten">Wendeplatten</option>
+        <option value="Schrauben">Schrauben</option>
         <option value="Platten">Platten</option>
+        <option value="Sonstiges">Sonstiges</option>
       </select>
       <button type="button" class="btn btn-primary" id="btn-add"><span>+</span> Neues Werkzeug</button>
       <button type="button" class="btn btn-secondary" id="btn-open-history" title="Änderungsprotokoll aller Werkzeuge anzeigen">
@@ -763,14 +768,19 @@
                 <option value="VHM-Bohrer">VHM-Bohrer</option>
                 <option value="Fräser">Fräser</option>
                 <option value="VHM-Fräser">VHM-Fräser</option>
+                <option value="Planfräser">Planfräser</option>
+                <option value="Radiusfräser">Radiusfräser</option>
+                <option value="Sonderfräser">Sonderfräser</option>
                 <option value="Gewindebohrer">Gewindebohrer</option>
+                <option value="Gewindefräser">Gewindefräser</option>
                 <option value="Senker">Senker</option>
                 <option value="Reibahle">Reibahle</option>
-                <option value="Gewindefräser">Gewindefräser</option>
                 <option value="T-Nutenfräser">T-Nutenfräser</option>
                 <option value="Einstechfräser">Einstechfräser</option>
-                <option value="Sonstiges">Sonstiges</option>
+                <option value="Wendeplatten">Wendeplatten</option>
+                <option value="Schrauben">Schrauben</option>
                 <option value="Platten">Platten</option>
+                <option value="Sonstiges">Sonstiges</option>
               </select>
             </div>
             <div class="form-group">
@@ -788,9 +798,21 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Icon (Emoji)</label>
-              <input type="text" id="tool-icon" maxlength="2" placeholder="z.B. 🔩 🌀 🔧" class="form-input">
+              <input type="text" id="tool-icon" maxlength="2" placeholder="z.B. 🔩 🌀 ⏹️ ⚪ ✨ 💠" class="form-input">
+              <div style="display:flex; gap:0.25rem; margin-top:0.35rem; flex-wrap:wrap;" id="icon-quick-chips">
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="🔩" title="Bohrer / Schrauben">🔩</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="🌀" title="Fräser">🌀</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="⏹️" title="Planfräser">⏹️</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="⚪" title="Radiusfräser">⚪</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="✨" title="Sonderfräser">✨</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="💠" title="Wendeplatten">💠</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="🔧" title="Gewindebohrer">🔧</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="🔺" title="Senker">🔺</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="📐" title="Reibahle">📐</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="⚙️" title="Sonstiges">⚙️</button>
+              </div>
             </div>
-            <div class="form-group" style="display:flex;align-items:flex-end;">
+            <div class="form-group" style="display:flex;align-items:flex-start;padding-top:1.5rem;">
               <div class="icon-preview" id="icon-preview">⚙️</div>
             </div>
           </div>
@@ -1809,8 +1831,11 @@
     function defaultIconForCategory(cat) {
       const map = {
         'Bohrer': '🔩', 'VHM-Bohrer': '🔩', 'Fräser': '🌀', 'VHM-Fräser': '🌀',
-        'Gewindebohrer': '🔧', 'Senker': '🔺', 'Reibahle': '📐',
-        'Gewindefräser': '🔧', 'T-Nutenfräser': '⊏', 'Einstechfräser': '▬', 'Sonstiges': '⚙️', 'Platten': '⚙️'
+        'Planfräser': '⏹️', 'Radiusfräser': '⚪', 'Sonderfräser': '✨',
+        'Gewindebohrer': '🔧', 'Gewindefräser': '🔧', 'Senker': '🔺', 'Reibahle': '📐',
+        'T-Nutenfräser': '⊏', 'Einstechfräser': '▬',
+        'Wendeplatten': '💠', 'Platten': '💠', 'Schrauben': '🔩',
+        'Sonstiges': '⚙️'
       };
       return map[cat] || '⚙️';
     }
@@ -2048,7 +2073,17 @@
         document.getElementById('modal-title').textContent = 'CNC-Werkzeug bearbeiten';
         document.getElementById('tool-id').value = data.id;
         document.getElementById('tool-name').value = data.name;
-        document.getElementById('tool-category').value = data.category;
+        const catSelect = document.getElementById('tool-category');
+        if (data.category) {
+          const optExists = Array.from(catSelect.options).some(function(o) { return o.value === data.category; });
+          if (!optExists) {
+            const newOpt = document.createElement('option');
+            newOpt.value = data.category;
+            newOpt.textContent = data.category;
+            catSelect.appendChild(newOpt);
+          }
+          catSelect.value = data.category;
+        }
         document.getElementById('tool-status').value = data.status;
         document.getElementById('tool-icon').value = data.icon || defaultIconForCategory(data.category);
         document.getElementById('tool-link').value = data.link || '';
@@ -2112,7 +2147,8 @@
         currentEditId = null;
         document.getElementById('modal-title').textContent = 'Neues CNC-Werkzeug';
         document.getElementById('tool-id').value = '';
-        document.getElementById('tool-icon').value = '⚙️';
+        const curCat = document.getElementById('tool-category').value;
+        document.getElementById('tool-icon').value = defaultIconForCategory(curCat);
         document.getElementById('tool-quantity').value = '1';
         document.getElementById('tool-coolant').value = 'Innenkühlung';
         showImagePreview('');
@@ -2512,7 +2548,22 @@
     safeOn('tool-icon', 'input', updateIconPreview);
     safeOn('tool-category', 'change', function() {
       const iconInput = document.getElementById('tool-icon');
-      if (iconInput && !iconInput.value.trim()) { iconInput.value = defaultIconForCategory(this.value); updateIconPreview(); }
+      if (iconInput) {
+        iconInput.value = defaultIconForCategory(this.value);
+        updateIconPreview();
+      }
+    });
+
+    // Quick emoji chip selectors
+    document.querySelectorAll('#icon-quick-chips button[data-emoji]').forEach(function(chip) {
+      chip.addEventListener('click', function() {
+        const emoji = this.getAttribute('data-emoji');
+        const iconInput = document.getElementById('tool-icon');
+        if (iconInput && emoji) {
+          iconInput.value = emoji;
+          updateIconPreview();
+        }
+      });
     });
     safeOn('btn-print', 'click', printDataSheet);
     safeOn('btn-print-label', 'click', printLabel);
