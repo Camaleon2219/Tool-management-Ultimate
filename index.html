@@ -699,8 +699,7 @@
 
       <div style="text-align:left; margin-bottom:1.25rem;">
         <label class="form-label" style="font-size:0.8rem; margin-bottom:0.25rem;">Werkstatt-Passwort</label>
-        <input type="password" id="login-password" placeholder="Passwort" value="cnc2024" class="form-input">
-        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.25rem;">Standard: <code>cnc2024</code></div>
+        <input type="password" id="login-password" placeholder="Dein persönliches Passwort" class="form-input">
       </div>
 
       <button type="button" class="btn btn-primary" id="btn-login" style="width:100%; justify-content:center; padding:0.65rem;">Anmelden &amp; Starten</button>
@@ -1040,12 +1039,19 @@
           <h2 class="modal-title">👤 Mitarbeiter wechseln</h2>
           <button type="button" class="modal-close" id="user-switch-close">&times;</button>
         </div>
-        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Wähle deinen Namen aus oder tippe einen neuen Namen ein, damit alle folgenden Änderungen dir zugeordnet werden.</p>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Wähle deinen Mitarbeiter und bestätige den Wechsel mit deinem persönlichen Passwort.</p>
         <form id="user-switch-form">
           <div class="form-group">
             <label class="form-label">Mitarbeiter-Name / Kürzel</label>
             <input type="text" id="user-switch-input" required placeholder="z.B. G. Palacios, M. Schmidt..." class="form-input">
           </div>
+          <div class="form-group">
+            <label class="form-label">Persönliches Passwort</label>
+            <input type="password" id="user-switch-password" required placeholder="Passwort" class="form-input">
+          </div>
+
+          <div id="user-switch-error" class="login-error" style="display:none; margin-bottom:1rem;"></div>
+
           <div style="margin-bottom:1rem;">
             <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.4rem;">Schnellauswahl:</div>
             <div id="recent-users-chips" style="display:flex; flex-wrap:wrap; gap:0.4rem;"></div>
@@ -1384,33 +1390,78 @@
     }
 
     /* ========== LOGIN & USER MANAGEMENT ========== */
-    const APP_PASSWORD = 'cnc2024';   // Standard-Passwort
+    // ============================================================
+    // MITARBEITER + PERSÖNLICHE PASSWÖRTER
+    // ============================================================
+    // HIER die Passwörter deiner Mitarbeiter eintragen.
+    // Die Namen müssen exakt so geschrieben sein wie im Login.
+    const USERS = {
+      'G. Palacios': '2020',
+      'B. Daniel': 'Passwort456!',
+      'F. Klotz': 'Passwort789!',
+      'Z. Franzi': 'Passwort321!'
+    };
 
     let currentUser = localStorage.getItem('fjk_cnc_user') || 'G. Palacios';
-    let knownUsers = ['G. Palacios', 'D.Blunk', 'T. Weber', 'K. Bauer'];
+    let knownUsers = Object.keys(USERS);
+
+    // Alte gespeicherte Benutzernamen nur übernehmen,
+    // wenn sie noch in USERS vorhanden sind.
     try {
       const storedUsers = localStorage.getItem('fjk_cnc_known_users');
       if (storedUsers) {
         const parsed = JSON.parse(storedUsers);
-        if (Array.isArray(parsed) && parsed.length) knownUsers = parsed;
+        if (Array.isArray(parsed)) {
+          knownUsers = parsed.filter(function(u) {
+            return Object.prototype.hasOwnProperty.call(USERS, u);
+          });
+          Object.keys(USERS).forEach(function(u) {
+            if (!knownUsers.includes(u)) knownUsers.push(u);
+          });
+        }
       }
     } catch(e) {}
+
+    // Falls ein alter/ungültiger Benutzer gespeichert wurde:
+    if (!USERS[currentUser]) {
+      currentUser = Object.keys(USERS)[0];
+      try { localStorage.setItem('fjk_cnc_user', currentUser); } catch(e) {}
+    }
 
     function saveKnownUser(name) {
       if (!name) return;
       name = name.trim();
+
+      // Nur tatsächlich angelegte Mitarbeiter zulassen.
+      if (!USERS[name]) return;
+
       if (!knownUsers.includes(name)) {
         knownUsers.unshift(name);
         if (knownUsers.length > 20) knownUsers.length = 20;
-        try { localStorage.setItem('fjk_cnc_known_users', JSON.stringify(knownUsers)); } catch(e) {}
+        try {
+          localStorage.setItem(
+            'fjk_cnc_known_users',
+            JSON.stringify(knownUsers)
+          );
+        } catch(e) {}
       }
+
       renderUserChipsAndDatalist();
     }
 
     function setCurrentUser(name) {
       if (!name) return;
-      currentUser = name.trim();
-      try { localStorage.setItem('fjk_cnc_user', currentUser); } catch(e) {}
+      name = name.trim();
+
+      // Unbekannte Mitarbeiter dürfen nicht gesetzt werden.
+      if (!USERS[name]) return;
+
+      currentUser = name;
+
+      try {
+        localStorage.setItem('fjk_cnc_user', currentUser);
+      } catch(e) {}
+
       saveKnownUser(currentUser);
       updateUserDisplay();
     }
@@ -1452,41 +1503,90 @@
     function checkLogin() {
       const overlay = document.getElementById('login-overlay');
       const logoutBtn = document.getElementById('btn-logout');
-      const isAuth = localStorage.getItem('fjk_cnc_login') === 'authenticated';
+
+      const isAuth =
+        localStorage.getItem('fjk_cnc_login') === 'authenticated' &&
+        localStorage.getItem('fjk_cnc_auth_user') === currentUser &&
+        !!USERS[currentUser];
+
       if (isAuth) {
         if (overlay) overlay.style.display = 'none';
         if (logoutBtn) logoutBtn.style.display = 'inline-flex';
         updateUserDisplay();
       } else {
+        // Alte/ungültige Anmeldung löschen.
+        localStorage.removeItem('fjk_cnc_login');
+        localStorage.removeItem('fjk_cnc_auth_user');
+
         if (overlay) overlay.style.display = 'flex';
         if (logoutBtn) logoutBtn.style.display = 'none';
+
         const userInp = document.getElementById('login-username');
-        if (userInp && !userInp.value) userInp.value = currentUser || 'G. Palacios';
+        if (userInp && !userInp.value) {
+          userInp.value = currentUser || Object.keys(USERS)[0];
+        }
+
+        // Niemals ein Passwort automatisch eintragen.
         const passInp = document.getElementById('login-password');
-        if (passInp && !passInp.value) passInp.value = APP_PASSWORD;
+        if (passInp) passInp.value = '';
       }
     }
 
     function handleLoginSubmit() {
-      let enteredPass = (document.getElementById('login-password').value || '').trim();
-      let enteredUser = (document.getElementById('login-username').value || '').trim();
+      const enteredPass =
+        (document.getElementById('login-password').value || '').trim();
 
-      // Wenn kein Passwort oder kein Benutzer eingetragen wurde, Standardwerte verwenden
-      if (!enteredPass) enteredPass = APP_PASSWORD;
-      if (!enteredUser) enteredUser = currentUser || 'G. Palacios';
+      const enteredUser =
+        (document.getElementById('login-username').value || '').trim();
 
-      if (enteredPass === APP_PASSWORD) {
+      const errEl = document.getElementById('login-error');
+
+      if (!enteredUser) {
+        if (errEl) {
+          errEl.textContent = '❌ Bitte Mitarbeiter auswählen.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      if (!USERS[enteredUser]) {
+        if (errEl) {
+          errEl.textContent =
+            '❌ Dieser Mitarbeiter ist nicht angelegt.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      if (!enteredPass) {
+        if (errEl) {
+          errEl.textContent = '❌ Bitte persönliches Passwort eingeben.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      if (USERS[enteredUser] === enteredPass) {
         setCurrentUser(enteredUser);
+
         localStorage.setItem('fjk_cnc_login', 'authenticated');
-        const errEl = document.getElementById('login-error');
+        localStorage.setItem('fjk_cnc_auth_user', enteredUser);
+
         if (errEl) errEl.style.display = 'none';
+
+        const passInp = document.getElementById('login-password');
+        if (passInp) passInp.value = '';
+
         checkLogin();
         fetchBackendData(false);
-        showToast('👋 Willkommen zurück, ' + currentUser + '!', 'success');
+
+        showToast(
+          '👋 Willkommen zurück, ' + currentUser + '!',
+          'success'
+        );
       } else {
-        const errEl = document.getElementById('login-error');
         if (errEl) {
-          errEl.textContent = '❌ Falsches Passwort (Standard ist: ' + APP_PASSWORD + ')';
+          errEl.textContent = '❌ Falsches Passwort.';
           errEl.style.display = 'block';
         }
       }
@@ -1518,6 +1618,7 @@
 
     safeOn('btn-logout', 'click', function() {
       localStorage.removeItem('fjk_cnc_login');
+      localStorage.removeItem('fjk_cnc_auth_user');
       location.reload();
     });
 
@@ -2820,23 +2921,86 @@
     safeOn('btn-cancel-user-switch', 'click', closeUserSwitchModal);
     safeOn('user-switch-form', 'submit', function(e) {
       e.preventDefault();
-      const val = (document.getElementById('user-switch-input').value || '').trim();
-      if (val) {
-        setCurrentUser(val);
-        closeUserSwitchModal();
-        showToast('👤 Aktiver Mitarbeiter gewechselt zu: ' + val, 'success');
+
+      const val =
+        (document.getElementById('user-switch-input').value || '').trim();
+
+      const pass =
+        (document.getElementById('user-switch-password').value || '').trim();
+
+      const errorEl =
+        document.getElementById('user-switch-error');
+
+      if (!USERS[val]) {
+        if (errorEl) {
+          errorEl.textContent =
+            '❌ Dieser Mitarbeiter ist nicht angelegt.';
+          errorEl.style.display = 'block';
+        }
+        return;
       }
+
+      if (!pass) {
+        if (errorEl) {
+          errorEl.textContent =
+            '❌ Bitte persönliches Passwort eingeben.';
+          errorEl.style.display = 'block';
+        }
+        return;
+      }
+
+      if (USERS[val] !== pass) {
+        if (errorEl) {
+          errorEl.textContent = '❌ Falsches Passwort.';
+          errorEl.style.display = 'block';
+        }
+        return;
+      }
+
+      setCurrentUser(val);
+
+      localStorage.setItem('fjk_cnc_login', 'authenticated');
+      localStorage.setItem('fjk_cnc_auth_user', val);
+
+      const passwordInput =
+        document.getElementById('user-switch-password');
+
+      if (passwordInput) passwordInput.value = '';
+
+      if (errorEl) errorEl.style.display = 'none';
+
+      closeUserSwitchModal();
+
+      showToast(
+        '👤 Angemeldet als: ' + val,
+        'success'
+      );
     });
+
     safeOn('recent-users-chips', 'click', function(e) {
       const chip = e.target.closest('[data-user]');
+
       if (chip) {
         const u = chip.getAttribute('data-user');
-        if (u) {
-          const inp = document.getElementById('user-switch-input');
+
+        if (u && USERS[u]) {
+          const inp =
+            document.getElementById('user-switch-input');
+
           if (inp) inp.value = u;
-          setCurrentUser(u);
-          closeUserSwitchModal();
-          showToast('👤 Aktiver Mitarbeiter gewechselt zu: ' + u, 'success');
+
+          const passInp =
+            document.getElementById('user-switch-password');
+
+          if (passInp) {
+            passInp.value = '';
+            passInp.focus();
+          }
+
+          const errorEl =
+            document.getElementById('user-switch-error');
+
+          if (errorEl) errorEl.style.display = 'none';
         }
       }
     });
