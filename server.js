@@ -27,6 +27,26 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 
 // JSONBin helpers
+function parseJsonBinErrorMessage(status, rawText) {
+  if (!rawText) {
+    if (status === 401) return 'Ungültiger Master-Key (401 Unauthorized). Bitte prüfen Sie Ihren JSONBin X-Master-Key.';
+    if (status === 403) return 'Zugriff verweigert (403 Forbidden). Master-Key besitzt nicht die erforderlichen Rechte.';
+    if (status === 404) return 'Bin nicht gefunden (404 Not Found). Bitte prüfen Sie die Bin-ID.';
+    return `JSONBin HTTP-Fehler ${status}`;
+  }
+  try {
+    const parsed = JSON.parse(rawText);
+    if (parsed.message) return parsed.message;
+    if (parsed.error) return typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error);
+  } catch (e) {
+    // rawText is not JSON (e.g. plain text or HTML error page)
+  }
+  const clean = rawText.replace(/<[^>]*>?/gm, '').trim();
+  if (status === 401) return 'Ungültiger Master-Key (401): ' + (clean.slice(0, 100) || 'Zugriff abgelehnt');
+  if (status === 404) return 'Bin-ID nicht gefunden (404): ' + (clean.slice(0, 100) || 'Nicht existent');
+  return clean.slice(0, 120) || `JSONBin HTTP-Fehler ${status}`;
+}
+
 function readJsonBinConfig() {
   try {
     if (fs.existsSync(JSONBIN_CONFIG_FILE)) {
@@ -69,8 +89,9 @@ async function pushToJsonBin() {
       return { success: true, lastSync: cfg.lastSync };
     }
     const errText = await res.text();
-    console.error('JSONBin push error:', res.status, errText);
-    return { success: false, error: errText, status: res.status };
+    const errMsg = parseJsonBinErrorMessage(res.status, errText);
+    console.error('JSONBin push error:', res.status, errMsg);
+    return { success: false, error: errMsg, status: res.status };
   } catch (err) {
     console.error('JSONBin push exception:', err);
     return { success: false, error: err.message };
@@ -101,7 +122,8 @@ async function pullFromJsonBin() {
       return { success: true, count: (record.tools || []).length, lastSync: cfg.lastSync };
     }
     const errText = await res.text();
-    return { success: false, error: errText, status: res.status };
+    const errMsg = parseJsonBinErrorMessage(res.status, errText);
+    return { success: false, error: errMsg, status: res.status };
   } catch (err) {
     return { success: false, error: err.message };
   }
@@ -262,9 +284,10 @@ app.post('/api/jsonbin/config', async (req, res) => {
     });
     if (!testRes.ok) {
       const errTxt = await testRes.text();
+      const message = parseJsonBinErrorMessage(testRes.status, errTxt);
       return res.status(400).json({
-        error: `JSONBin Fehler (${testRes.status}): Bitte prüfen Sie Bin-ID und Master-Key.`,
-        details: errTxt
+        error: `JSONBin Fehler (${testRes.status}): ${message}`,
+        details: message
       });
     }
     const data = await testRes.json();
@@ -319,8 +342,10 @@ app.post('/api/jsonbin/create-bin', async (req, res) => {
     });
     if (!createRes.ok) {
       const errTxt = await createRes.text();
+      const message = parseJsonBinErrorMessage(createRes.status, errTxt);
       return res.status(400).json({
-        error: `Fehler beim Erstellen des Bins (${createRes.status}): ${errTxt}`
+        error: `Fehler beim Erstellen des Bins (${createRes.status}): ${message}`,
+        details: message
       });
     }
     const createData = await createRes.json();

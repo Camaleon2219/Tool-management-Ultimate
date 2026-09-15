@@ -2505,6 +2505,34 @@
     safeOn('server-cancel', 'click', closeServerModal);
     safeOn('btn-server-cancel', 'click', closeServerModal);
 
+    // Helper to safely parse JSON or extract readable error text
+    async function safeFetchJson(url, options) {
+      const res = await fetch(url, options);
+      const contentType = (res.headers && res.headers.get('content-type')) || '';
+      let data = null;
+      let text = '';
+      if (contentType.includes('application/json')) {
+        try {
+          data = await res.json();
+        } catch (e) {
+          text = await res.text().catch(() => '');
+        }
+      } else {
+        text = await res.text().catch(() => '');
+      }
+
+      if (!res.ok) {
+        const msg = (data && (data.error || data.message || data.details)) || text || ('HTTP ' + res.status);
+        throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      }
+      if (data !== null) return data;
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        return { rawText: text, success: true };
+      }
+    }
+
     // 1-Click Auto-Create Bin
     safeOn('btn-jsonbin-autocreate', 'click', async function() {
       const keyInput = document.getElementById('jsonbin-quick-masterkey');
@@ -2519,12 +2547,11 @@
       btn.disabled = true;
 
       try {
-        const res = await fetch('/api/jsonbin/create-bin', {
+        const data = await safeFetchJson('/api/jsonbin/create-bin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ apiKey: key })
         });
-        const data = await res.json();
         if (data.success && data.binId) {
           jsonbinConfig.enabled = true;
           jsonbinConfig.binId = data.binId;
@@ -2538,7 +2565,7 @@
           showToast('❌ ' + (data.error || 'Erstellung fehlgeschlagen'), 'warning');
         }
       } catch (err) {
-        showToast('❌ Verbindungsfehler: ' + err.message, 'warning');
+        showToast('❌ Fehler: ' + err.message, 'warning');
       } finally {
         btn.innerHTML = origText;
         btn.disabled = false;
@@ -2563,12 +2590,11 @@
       btn.disabled = true;
 
       try {
-        const res = await fetch('/api/jsonbin/config', {
+        const data = await safeFetchJson('/api/jsonbin/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enabled: true, binId: binId, apiKey: apiKey })
         });
-        const data = await res.json();
         if (data.success) {
           jsonbinConfig.enabled = true;
           jsonbinConfig.binId = binId;
@@ -2584,7 +2610,7 @@
           showToast('❌ Verbindung fehlgeschlagen: ' + (data.error || 'Ungültige Bin-ID oder Key'), 'warning');
         }
       } catch (err) {
-        showToast('❌ Verbindungsfehler: ' + err.message, 'warning');
+        showToast('❌ Fehler: ' + err.message, 'warning');
       } finally {
         btn.textContent = origText;
         btn.disabled = false;
@@ -2605,12 +2631,11 @@
       const btn = document.getElementById('btn-jsonbin-test');
       btn.textContent = '⚡ Teste...';
       try {
-        const res = await fetch('/api/jsonbin/config', {
+        const data = await safeFetchJson('/api/jsonbin/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enabled: true, binId: binId, apiKey: apiKey })
         });
-        const data = await res.json();
         if (data.success) {
           showToast('✅ Verbindung erfolgreich! Bin ist erreichbar.', 'success');
         } else {
