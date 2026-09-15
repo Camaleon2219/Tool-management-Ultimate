@@ -853,10 +853,18 @@
       <button type="button" class="btn btn-ai" id="btn-open-ai-drawing" title="Technische Zeichnung hochladen & passendes Werkzeug aus Lager finden">
         <span>🤖</span> KI-Zeichnungsanalyse
       </button>
-      <button type="button" class="sync-status online" id="btn-sync" title="Server-Synchronisation (Live)">
-        <span class="sync-dot"></span>
-        <span id="sync-text">Live Server</span>
+      <button type="button" class="btn btn-secondary" id="btn-refresh-all" title="Werkzeuge & Cloud-Daten jetzt sofort aktualisieren" style="font-weight:600; display:inline-flex; align-items:center; gap:0.4rem;">
+        <span id="btn-refresh-icon" style="display:inline-block; font-size:1.05rem;">🔄</span> Aktualisieren
       </button>
+      <div style="display:inline-flex; align-items:center; gap:0.25rem;">
+        <button type="button" class="sync-status online" id="btn-sync" title="Klicken für Sofort-Aktualisierung (Live Cloud)">
+          <span class="sync-dot"></span>
+          <span id="sync-text">Live Cloud</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-open-cloud-settings" title="Cloud- & JSONBin-Einstellungen" style="padding:0.4rem 0.55rem; font-size:0.85rem;" aria-label="Einstellungen">
+          ⚙️
+        </button>
+      </div>
     </div>
     <div class="grid" id="tools-grid"></div>
     <div class="empty" id="empty-state">
@@ -1990,9 +1998,13 @@
           }
         }
       } catch(e) {}
-      // Standard-Bin-ID immer sicherstellen, damit keine manuelle Verbindung nötig ist
-      if (!jsonbinConfig.binId) {
+      // Standard-Bin-ID immer sicherstellen und dauerhaft aktiv halten
+      if (!jsonbinConfig.binId || jsonbinConfig.binId === '6aa9246bffd5d1605309592b') {
         jsonbinConfig.binId = '6aa9246bffd5d1605309592b';
+        jsonbinConfig.enabled = true;
+      }
+      // Nie deaktiviert lassen wenn eine Bin-ID existiert
+      if (jsonbinConfig.binId) {
         jsonbinConfig.enabled = true;
       }
     }
@@ -2280,6 +2292,86 @@
     };
 
     // ==================== PERSISTENCE & AUDIT LOG API ====================
+    let isRefreshing = false;
+    async function refreshAllData(showNotification) {
+      if (isRefreshing) return;
+      isRefreshing = true;
+      const refreshIcon = document.getElementById('btn-refresh-icon');
+      if (refreshIcon) {
+        refreshIcon.style.transition = 'transform 0.6s ease';
+        refreshIcon.style.transform = 'rotate(360deg)';
+      }
+      updateSyncIndicator('syncing');
+
+      try {
+        // 1. Frische Werkzeuge vom Backend anfordern (Backend holt automatisch das Neueste von JSONBin)
+        const tRes = await fetch('/api/tools?fresh=1&t=' + Date.now(), { credentials: 'include' });
+        let gotTools = false;
+        if (tRes.ok) {
+          const tData = await tRes.json();
+          if (Array.isArray(tData.tools) && tData.tools.length > 0) {
+            tools = tData.tools;
+            saveToolsLocal();
+            renderStats();
+            renderGrid();
+            gotTools = true;
+          }
+        }
+
+        // Falls Server offline oder keine Werkzeuge lieferte, Direkt-Abruf von JSONBin im Browser
+        if (!gotTools && jsonbinConfig.binId) {
+          await pullFromJsonBinDirect(false);
+        }
+
+        // 2. Änderungsprotokoll abrufen
+        try {
+          const hRes = await fetch('/api/history?t=' + Date.now(), { credentials: 'include' });
+          if (hRes.ok) {
+            const hData = await hRes.json();
+            if (Array.isArray(hData.history)) {
+              historyEntries = hData.history;
+              updateHistoryBadge();
+              const histModal = document.getElementById('history-modal');
+              if (histModal && histModal.classList.contains('active')) {
+                renderHistoryList();
+              }
+            }
+          }
+        } catch(e) {}
+
+        updateSyncIndicator('online');
+        if (showNotification) {
+          showToast('✅ Daten erfolgreich aktualisiert (' + tools.length + ' Werkzeuge)', 'success');
+        }
+      } catch (err) {
+        console.warn('Refresh error:', err);
+        // Fallback Direkt-Abruf aus JSONBin
+        if (jsonbinConfig.binId) {
+          try {
+            await pullFromJsonBinDirect(false);
+            if (showNotification) {
+              showToast('✅ Daten aus Cloud aktualisiert (' + tools.length + ' Werkzeuge)', 'success');
+            }
+          } catch(e2) {
+            if (showNotification) {
+              showToast('⚠️ Aktualisierung fehlgeschlagen: ' + (err.message || 'Verbindungsfehler'), 'warning');
+            }
+          }
+        } else if (showNotification) {
+          showToast('⚠️ Aktualisierung fehlgeschlagen: ' + (err.message || 'Verbindungsfehler'), 'warning');
+        }
+        updateSyncIndicator('online');
+      } finally {
+        isRefreshing = false;
+        setTimeout(function() {
+          if (refreshIcon) {
+            refreshIcon.style.transition = 'none';
+            refreshIcon.style.transform = 'none';
+          }
+        }, 650);
+      }
+    }
+
     async function fetchBackendData(silent) {
       try {
         // 1. Tools abrufen (mit Session-Credentials für Nginx-Proxy)
@@ -2389,21 +2481,22 @@
       const btn = document.getElementById('btn-sync');
       const text = document.getElementById('sync-text');
       if (!btn || !text) return;
-      if (jsonbinConfig && jsonbinConfig.enabled && jsonbinConfig.binId) {
+      if (status === 'syncing') {
+        btn.className = 'sync-status syncing';
+        btn.title = 'Aktualisiere Werkzeuge & Cloud-Daten...';
+        text.textContent = 'Sync...';
+      } else if (jsonbinConfig && jsonbinConfig.enabled && jsonbinConfig.binId) {
         btn.className = 'sync-status online';
-        btn.title = 'JSONBin.io Cloud-Speicher aktiv (Bin: ' + jsonbinConfig.binId + ') - Klick für Einstellungen';
-        text.textContent = '☁️ JSONBin Aktiv';
+        btn.title = 'Cloud aktiv – Klick zum sofortigen Aktualisieren';
+        text.textContent = '☁️ Live Cloud';
       } else if (status === 'online' || status === 'server') {
         btn.className = 'sync-status online';
-        btn.title = 'Mit Werkstatt-Server verbunden - Klick für Cloud-Einrichtung';
+        btn.title = 'Server verbunden – Klick zum sofortigen Aktualisieren';
         text.textContent = 'Live Server';
-      } else if (status === 'syncing') {
-        btn.className = 'sync-status syncing';
-        text.textContent = 'Sync...';
       } else {
-        btn.className = 'sync-status offline';
-        btn.title = 'Offline / Lokaler Speicher - Klick für Cloud-Einrichtung';
-        text.textContent = 'Offline (Lokal)';
+        btn.className = 'sync-status online';
+        btn.title = 'Klick zum sofortigen Aktualisieren';
+        text.textContent = '☁️ Live';
       }
     }
 
@@ -3356,8 +3449,10 @@
       }
     });
 
-    // Server & JSONBin modal events
-    safeOn('btn-sync', 'click', openServerModal);
+    // Refresh & Sync events
+    safeOn('btn-refresh-all', 'click', function() { refreshAllData(true); });
+    safeOn('btn-sync', 'click', function() { refreshAllData(true); });
+    safeOn('btn-open-cloud-settings', 'click', openServerModal);
     safeOn('server-close', 'click', closeServerModal);
     safeOn('server-modal-close', 'click', closeServerModal);
     safeOn('server-backdrop', 'click', closeServerModal);
@@ -4406,33 +4501,27 @@
     renderStats();
     renderGrid();
 
-    // Cloud-Sync (JSONBin) initialisieren und anschließend mit Server abgleichen
+    // Cloud-Sync (JSONBin) initialisieren und sofort frische Daten abrufen
     initJsonBin().finally(function() {
-      fetchBackendData(true);
+      refreshAllData(false);
     });
 
-    // Automatischer Hintergrund-Abgleich alle 5 Sekunden
+    // Automatischer Hintergrund-Abgleich alle 4 Sekunden (völlig lautlos)
     if (!pollInterval) {
       pollInterval = setInterval(function() {
         fetchBackendData(true);
-      }, 5000); // Alle 5 Sekunden automatisch ohne Tastendruck aktualisieren
+      }, 4000);
     }
 
     // Sofortige Aktualisierung beim Wechseln des Tabs oder Entsperren des Bildschirms
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState === 'visible') {
-        fetchBackendData(true);
-        if (jsonbinConfig.enabled && jsonbinConfig.binId) {
-          pullFromJsonBinDirect(false);
-        }
+        refreshAllData(false);
       }
     });
 
     window.addEventListener('focus', function() {
-      fetchBackendData(true);
-      if (jsonbinConfig.enabled && jsonbinConfig.binId) {
-        pullFromJsonBinDirect(false);
-      }
+      refreshAllData(false);
     });
   });
   </script>

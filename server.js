@@ -205,9 +205,10 @@ async function checkAndSyncWithCloud(force = false) {
   const cleanId = extractBinId(cfg.binId);
   if (!cfg.enabled || !cleanId) return null;
   const now = Date.now();
-  if (!force && (now - lastCloudSyncTime < 5000 || isCloudSyncing)) {
+  if (!force && (now - lastCloudSyncTime < 3000)) {
     return null;
   }
+  if (isCloudSyncing) return null;
   isCloudSyncing = true;
   try {
     const result = await pullFromJsonBin();
@@ -223,12 +224,12 @@ setTimeout(() => {
   checkAndSyncWithCloud(true).then(r => {
     if (r && r.success) console.log(`Startup: Synced ${r.count} tools from JSONBin.io`);
   }).catch(() => {});
-}, 1000);
+}, 500);
 
 // Periodic background pull from JSONBin so changes from other devices propagate automatically
 setInterval(() => {
   checkAndSyncWithCloud(false).catch(() => {});
-}, 8000);
+}, 5000);
 
 app.use('/uploads', express.static(UPLOADS_DIR));
 
@@ -308,7 +309,7 @@ function writeHistory(history) {
 // APIs
 app.get('/api/tools', async (req, res) => {
   const now = Date.now();
-  if (now - lastCloudSyncTime > 5000 || req.query.fresh === '1') {
+  if (req.query.fresh === '1' || now - lastCloudSyncTime > 3000) {
     await checkAndSyncWithCloud(true).catch(() => {});
   }
   res.json({ tools: readTools() });
