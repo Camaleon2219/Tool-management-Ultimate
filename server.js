@@ -1,11 +1,47 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Ensure nginx configuration allows direct /api/ access to prevent 302/405 auth redirects
+try {
+  const nginxConfPath = '/etc/nginx/nginx.conf';
+  if (fs.existsSync(nginxConfPath)) {
+    let conf = fs.readFileSync(nginxConfPath, 'utf8');
+    if (!conf.includes('location /api/ {')) {
+      const marker = '# Serve the app for all other paths.';
+      if (conf.includes(marker)) {
+        const patch = `        # API routes: direct pass to Node.js backend
+        location /api/ {
+            proxy_pass http://localhost:3000;
+            proxy_set_header Host localhost:3000;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_http_version 1.1;
+        }
+
+        # Serve the app for all other paths.`;
+        conf = conf.replace(marker, patch);
+        fs.writeFileSync(nginxConfPath, conf, 'utf8');
+        try {
+          execSync('nginx -t && nginx -s reload', { stdio: 'ignore' });
+          console.log('[Nginx] Successfully configured /api/ direct proxy pass.');
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  }
+} catch (err) {
+  // Graceful fallback
+}
 
 const app = express();
 const PORT = 3000;
