@@ -2,7 +2,7 @@
 chcp 65001 >nul
 title FJK CNC-Werkzeugverwaltung
 
-set "URL=https://ais-pre-wpnyg2itor6x6by2sihzpz-550906376930.europe-west2.run.app"
+set "URL=https://ais-dev-wpnyg2itor6x6by2sihzpz-550906376930.europe-west2.run.app"
 
 echo =================================================================
 echo   FJK CNC-Werkzeugverwaltung wird als Windows-App gestartet...

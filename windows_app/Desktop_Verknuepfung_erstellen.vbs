@@ -3,7 +3,7 @@ sDesktop = oWS.SpecialFolders("Desktop")
 Set oLink = oWS.CreateShortcut(sDesktop & "\FJK CNC-Werkzeugverwaltung.lnk")
 
 Dim sEdgePath, sUrl
-sUrl = "https://ais-pre-wpnyg2itor6x6by2sihzpz-550906376930.europe-west2.run.app"
+sUrl = "https://ais-dev-wpnyg2itor6x6by2sihzpz-550906376930.europe-west2.run.app"
 sEdgePath = oWS.ExpandEnvironmentStrings("%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe")
 
 Dim fso

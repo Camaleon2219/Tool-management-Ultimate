@@ -1661,6 +1661,18 @@
       if (el) el.addEventListener(event, handler);
     }
 
+    /* ========== API RESOLVER FOR DESKTOP & PWA ========== */
+    function resolveApiUrl(path) {
+      if (!path || !path.startsWith('/')) return path;
+      const host = window.location.hostname || '';
+      // Falls die App über die geteilte Preview-Adresse (ais-pre-*) oder statisch geöffnet ist,
+      // leiten wir API-Anfragen an den aktiven Live-Container (ais-dev-*) weiter:
+      if (host.includes('ais-pre-')) {
+        return window.location.protocol + '//' + host.replace('ais-pre-', 'ais-dev-') + path;
+      }
+      return path;
+    }
+
     /* ========== LOGIN & USER MANAGEMENT ========== */
     // ============================================================
     // MITARBEITER + PERSÖNLICHE PASSWÖRTER
@@ -3828,19 +3840,48 @@
       const notes = (document.getElementById('ai-notes-input').value || '').trim();
 
       try {
-        const response = await fetch('/api/ai/analyze-drawing', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            image: currentAiFile.base64,
-            notes: notes,
-            tools: tools
-          })
+        let apiUrl = resolveApiUrl('/api/ai/analyze-drawing');
+        const payload = JSON.stringify({
+          image: currentAiFile.base64,
+          notes: notes,
+          tools: tools
         });
+
+        let response = null;
+        try {
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload
+          });
+        } catch(fetchErr) {
+          console.warn('Initial fetch error:', fetchErr);
+        }
+
+        // Falls die aktuelle Umgebung ein statischer Host/Preview ist und 404 oder 405 liefert:
+        if (!response || response.status === 404 || response.status === 405) {
+          const fallbackUrl = 'https://ais-dev-wpnyg2itor6x6by2sihzpz-550906376930.europe-west2.run.app/api/ai/analyze-drawing';
+          if (apiUrl !== fallbackUrl) {
+            console.log('Versuche Direktverbindung zum aktiven Werkstatt-KI-Server:', fallbackUrl);
+            try {
+              response = await fetch(fallbackUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: payload
+              });
+            } catch(fallbackErr) {
+              console.warn('Fallback fehlgeschlagen:', fallbackErr);
+            }
+          }
+        }
 
         if (aiStepTimer) {
           clearInterval(aiStepTimer);
           aiStepTimer = null;
+        }
+
+        if (!response) {
+          throw new Error('Keine Verbindung zum Werkstatt-KI-Server. Bitte prüfe deine Internetverbindung oder aktualisiere die App.');
         }
 
         let data = null;
@@ -3856,7 +3897,9 @@
 
         if (!data) {
           const rawText = await response.text().catch(function() { return ''; });
-          if (response.status === 413 || rawText.includes('413') || rawText.includes('Too Large')) {
+          if (response.status === 405) {
+            throw new Error('Server-Antwortfehler (405): Die Anfrage wurde von einem zwischengespeicherten Host blockiert. Bitte starte die App über die Live-Adresse oder das aktuelle Startskript neu.');
+          } else if (response.status === 413 || rawText.includes('413') || rawText.includes('Too Large')) {
             throw new Error('Das Bild ist zu groß für die Übertragung. Bitte ein kleineres Bild wählen oder erneut versuchen.');
           } else if (response.status === 504 || response.status === 502) {
             throw new Error('Zeitüberschreitung bei der KI-Anfrage (Gateway Timeout). Bitte versuche es erneut.');

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fjk-cnc-cache-v1';
+const CACHE_NAME = 'fjk-cnc-cache-v3';
 
 const STATIC_ASSETS = [
   '/',
@@ -40,6 +40,12 @@ self.addEventListener('activate', (event) => {
 
 // Fetch: Strategy
 self.addEventListener('fetch', (event) => {
+  // CRITICAL: NEVER intercept non-GET requests (POST, PUT, DELETE, OPTIONS).
+  // Let the browser transmit them directly to avoid 405 or body consumption errors.
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   const url = new URL(event.request.url);
 
   // API calls are network-first or pass-through

@@ -10,6 +10,17 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 
+// CORS Support & Preflight Handling for Desktop Apps, PWA, and cross-origin access
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Master-Key');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(__dirname));
@@ -649,12 +660,11 @@ Antworte AUSSCHLIESSLICH mit gültigem JSON nach folgendem Format:
   }
 }`;
 
-    // Modell-Kaskade bei hoher Serverlast / 503 Spikes
+    // Modell-Kaskade bei hoher Serverlast / Spikes (geprüfte stabile Modelle)
     const candidateModels = [
-      'gemini-flash-latest',
       'gemini-3.8-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-3.1-pro-preview'
+      'gemini-3.6-flash',
+      'gemini-3.1-flash-lite'
     ];
 
     let response = null;
@@ -765,6 +775,14 @@ Antworte AUSSCHLIESSLICH mit gültigem JSON nach folgendem Format:
 
     res.status(500).json({ error: userMsg });
   }
+});
+
+app.get('/api/ai/analyze-drawing', (req, res) => {
+  res.status(405).json({
+    error: 'Bitte verwenden Sie HTTP POST für die KI-Zeichnungsanalyse.',
+    endpoint: '/api/ai/analyze-drawing',
+    method: 'POST'
+  });
 });
 
 // Fallback to index.html

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "build": "mkdir -p dist && cp index.html manifest.json sw.js dist/ && cp -r icons dist/",
+    "lint": "node -c server.js",
+    "build": "mkdir -p dist && cp index.html manifest.json sw.js dist/ && cp -r icons dist/ && (cp FJK_CNC_Windows_App.zip dist/ 2>/dev/null || true)",
     "start": "node server.js"
   },
   "dependencies": {
