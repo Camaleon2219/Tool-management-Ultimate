@@ -1,5 +1,41 @@
 [
   {
+    "id": "mu2jun0a3sqvhh51bqy",
+    "timestamp": "2026-09-15T10:49:14.746Z",
+    "userName": "T. Weber",
+    "action": "Bearbeitet",
+    "toolId": "msht9lpgrz832di656e",
+    "toolName": "ADX D=300.0mm",
+    "details": "Name: \"ADX D=3.0mm\" ➔ \"ADX D=300.0mm\"",
+    "changes": [
+      "Name: \"ADX D=3.0mm\" ➔ \"ADX D=300.0mm\""
+    ]
+  },
+  {
+    "id": "mu2ja5crffft7iz0js9",
+    "timestamp": "2026-09-15T10:33:18.747Z",
+    "userName": "T. Weber",
+    "action": "Bearbeitet",
+    "toolId": "msht9lpgrz832di656e",
+    "toolName": "ADX D=3.0mm",
+    "details": "Stückzahl: 2 ➔ 3 Stk.",
+    "changes": [
+      "Stückzahl: 2 ➔ 3 Stk."
+    ]
+  },
+  {
+    "id": "mu2j1m3a7f79pn7w5lr",
+    "timestamp": "2026-09-15T10:26:40.534Z",
+    "userName": "T. Weber",
+    "action": "Bearbeitet",
+    "toolId": "mtnf97ot7xrlbrfnvj8",
+    "toolName": "VHM-Bohrer Ø6,1 mm lang",
+    "details": "Stückzahl: 3 ➔ 2 Stk.",
+    "changes": [
+      "Stückzahl: 3 ➔ 2 Stk."
+    ]
+  },
+  {
     "id": "mtnezzzsl7d9kx895an",
     "timestamp": "2026-09-04T20:36:54.136Z",
     "userName": "System",

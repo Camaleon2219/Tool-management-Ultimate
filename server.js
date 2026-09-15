@@ -27,6 +27,14 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 
 // JSONBin helpers
+function extractBinId(input) {
+  if (!input) return '';
+  const str = String(input).trim();
+  const m = str.match(/([a-f0-9]{24})/i);
+  if (m) return m[1].toLowerCase();
+  return str.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
 function parseJsonBinErrorMessage(status, rawText) {
   if (!rawText) {
     if (status === 401) return 'Ungültiger Master-Key (401 Unauthorized). Bitte prüfen Sie Ihren JSONBin X-Master-Key.';
@@ -68,19 +76,23 @@ function writeJsonBinConfig(cfg) {
 
 async function pushToJsonBin() {
   const cfg = readJsonBinConfig();
-  if (!cfg.enabled || !cfg.binId || !cfg.apiKey) return { skipped: true };
+  const cleanId = extractBinId(cfg.binId);
+  if (!cfg.enabled || !cleanId) return { skipped: true };
   try {
     const payload = {
       tools: readTools(),
       history: readHistory(),
       updatedAt: new Date().toISOString()
     };
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.binId}`, {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    if (cfg.apiKey && cfg.apiKey.trim()) {
+      headers['X-Master-Key'] = cfg.apiKey.trim();
+    }
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${cleanId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': cfg.apiKey
-      },
+      headers: headers,
       body: JSON.stringify(payload)
     });
     if (res.ok) {
@@ -100,13 +112,16 @@ async function pushToJsonBin() {
 
 async function pullFromJsonBin() {
   const cfg = readJsonBinConfig();
-  if (!cfg.enabled || !cfg.binId || !cfg.apiKey) return { skipped: true };
+  const cleanId = extractBinId(cfg.binId);
+  if (!cfg.enabled || !cleanId) return { skipped: true };
   try {
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.binId}/latest`, {
+    const headers = {};
+    if (cfg.apiKey && cfg.apiKey.trim()) {
+      headers['X-Master-Key'] = cfg.apiKey.trim();
+    }
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${cleanId}/latest`, {
       method: 'GET',
-      headers: {
-        'X-Master-Key': cfg.apiKey
-      }
+      headers: headers
     });
     if (res.ok) {
       const data = await res.json();
@@ -268,6 +283,7 @@ app.get('/api/jsonbin', (req, res) => {
     enabled: !!cfg.enabled,
     binId: cfg.binId || '',
     hasKey: !!cfg.apiKey,
+    isPrivate: cfg.isPrivate !== undefined ? cfg.isPrivate : false,
     lastSync: cfg.lastSync || null
   });
 });
@@ -275,12 +291,19 @@ app.get('/api/jsonbin', (req, res) => {
 app.post('/api/jsonbin/config', async (req, res) => {
   try {
     const { binId, apiKey, enabled = true } = req.body;
-    if (!binId || !apiKey) {
-      return res.status(400).json({ error: 'Bin-ID und Master-Key sind erforderlich.' });
+    const cleanBinId = extractBinId(binId);
+    if (!cleanBinId) {
+      return res.status(400).json({ error: 'Bitte geben Sie eine gültige 24-stellige Bin-ID oder URL ein.' });
+    }
+    const existingCfg = readJsonBinConfig();
+    const effectiveApiKey = (apiKey && apiKey.trim()) || (existingCfg.binId === cleanBinId ? (existingCfg.apiKey || '') : '');
+    const headers = {};
+    if (effectiveApiKey) {
+      headers['X-Master-Key'] = effectiveApiKey;
     }
     // Test access to JSONBin
-    const testRes = await fetch(`https://api.jsonbin.io/v3/b/${binId.trim()}/latest`, {
-      headers: { 'X-Master-Key': apiKey.trim() }
+    const testRes = await fetch(`https://api.jsonbin.io/v3/b/${cleanBinId}/latest`, {
+      headers: headers
     });
     if (!testRes.ok) {
       const errTxt = await testRes.text();
@@ -291,10 +314,12 @@ app.post('/api/jsonbin/config', async (req, res) => {
       });
     }
     const data = await testRes.json();
+    const isPrivate = Boolean(data.metadata && data.metadata.private);
     const cfg = {
       enabled: Boolean(enabled),
-      binId: binId.trim(),
-      apiKey: apiKey.trim(),
+      binId: cleanBinId,
+      apiKey: effectiveApiKey,
+      isPrivate: isPrivate,
       lastSync: new Date().toISOString()
     };
     writeJsonBinConfig(cfg);
@@ -311,7 +336,7 @@ app.post('/api/jsonbin/config', async (req, res) => {
       count = readTools().length;
     }
 
-    res.json({ success: true, count, lastSync: cfg.lastSync });
+    res.json({ success: true, binId: cleanBinId, isPrivate, count, lastSync: cfg.lastSync });
   } catch (err) {
     res.status(500).json({ error: 'Verbindungsfehler zu JSONBin: ' + err.message });
   }
@@ -336,7 +361,7 @@ app.post('/api/jsonbin/create-bin', async (req, res) => {
         'Content-Type': 'application/json',
         'X-Master-Key': apiKey.trim(),
         'X-Bin-Name': binName || 'FJK_CNC_Werkzeuge',
-        'X-Bin-Private': 'true'
+        'X-Bin-Private': 'false'
       },
       body: JSON.stringify(payload)
     });
@@ -357,12 +382,41 @@ app.post('/api/jsonbin/create-bin', async (req, res) => {
       enabled: true,
       binId: binId,
       apiKey: apiKey.trim(),
+      isPrivate: false,
       lastSync: new Date().toISOString()
     };
     writeJsonBinConfig(cfg);
-    res.json({ success: true, binId: binId, count: payload.tools.length, lastSync: cfg.lastSync });
+    res.json({ success: true, binId: binId, count: payload.tools.length, lastSync: cfg.lastSync, isPublic: true });
   } catch (err) {
     res.status(500).json({ error: 'Fehler beim Erstellen des Bins: ' + err.message });
+  }
+});
+
+app.post('/api/jsonbin/set-public', async (req, res) => {
+  try {
+    const cfg = readJsonBinConfig();
+    const binId = extractBinId(req.body.binId || cfg.binId);
+    const apiKey = (req.body.apiKey && req.body.apiKey.trim()) || cfg.apiKey;
+    if (!binId || !apiKey) {
+      return res.status(400).json({ error: 'Gültige Bin-ID und Master-Key sind erforderlich.' });
+    }
+    const updateRes = await fetch(`https://api.jsonbin.io/v3/b/${binId}/meta/privacy`, {
+      method: 'PUT',
+      headers: {
+        'X-Master-Key': apiKey.trim(),
+        'X-Bin-Private': 'false'
+      }
+    });
+    if (!updateRes.ok) {
+      const errTxt = await updateRes.text();
+      const message = parseJsonBinErrorMessage(updateRes.status, errTxt);
+      return res.status(400).json({ error: `Konnte Bin nicht auf öffentlich umstellen: ${message}` });
+    }
+    cfg.isPrivate = false;
+    writeJsonBinConfig(cfg);
+    res.json({ success: true, isPrivate: false, message: 'Cloud-Bin wurde erfolgreich auf öffentlich (Public) gesetzt!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Fehler: ' + err.message });
   }
 });
 

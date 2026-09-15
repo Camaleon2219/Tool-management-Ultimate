@@ -1008,23 +1008,46 @@
               <div style="font-weight:700; color:var(--text-title);" id="jsonbin-status-title">JSONBin.io Cloud-Speicher prüfen...</div>
               <div style="font-size:0.8rem; color:var(--text-muted);" id="jsonbin-status-desc">Dauerhafte Cloud-Sicherung für alle Werkzeuge</div>
             </div>
+            <span id="jsonbin-privacy-badge" class="badge" style="display:none; font-size:0.75rem; background:rgba(59,130,246,0.15); color:var(--primary); border:1px solid rgba(59,130,246,0.3);">🌐 Öffentlich</span>
             <span id="jsonbin-badge" class="badge badge-warning" style="font-size:0.75rem;">Wird geladen...</span>
           </div>
 
-          <!-- Section 1: 1-Click Auto-Create Bin -->
+          <!-- Section 1: 1-Click Auto-Create Public Bin -->
           <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:10px; padding:1rem; margin-bottom:1rem;">
             <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
               <span style="font-size:1.2rem;">✨</span>
-              <strong style="color:var(--text-title); font-size:0.95rem;">Schnellstart: Neuen Cloud-Bin mit 1 Klick anlegen</strong>
+              <strong style="color:var(--text-title); font-size:0.95rem;">Schnellstart: Neuen öffentlichen Cloud-Bin anlegen (Public Bin)</strong>
             </div>
             <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem; line-height:1.4;">
-              Haben Sie einen kostenlosen Account auf <strong>jsonbin.io</strong>? Fügen Sie hier einfach Ihren <strong>Master Key</strong> ein. Die App erstellt den Cloud-Bin automatisch, lädt alle aktuellen Werkzeuge hoch und verbindet sich!
+              Haben Sie einen kostenlosen Account auf <strong>jsonbin.io</strong>? Fügen Sie hier einfach Ihren <strong>Master Key</strong> ein. Die App erstellt automatisch einen <strong>öffentlichen Cloud-Bin</strong> (<code>X-Bin-Private: false</code>), lädt alle aktuellen Werkzeuge hoch und verbindet sich!
             </p>
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
               <input type="password" id="jsonbin-quick-masterkey" placeholder="JSONBin Master-Key ($2a$10$...)" class="form-input" style="flex:1 1 240px; font-family:monospace; font-size:0.85rem;">
               <button type="button" class="btn btn-primary" id="btn-jsonbin-autocreate" style="flex:1 1 200px; display:inline-flex; align-items:center; justify-content:center; gap:0.4rem;">
-                <span>✨</span> Bin jetzt anlegen & verbinden
+                <span>🌐</span> Öffentlichen Bin anlegen & verbinden
               </button>
+            </div>
+          </div>
+
+          <!-- Device Sharing Section for other browsers -->
+          <div id="jsonbin-share-box" style="display:none; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.28); border-radius:10px; padding:0.9rem; margin-bottom:1rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem;">
+              <span style="font-size:1.15rem;">📱</span>
+              <strong style="color:var(--text-title); font-size:0.92rem;">Direkt-Kopplung für andere Browser & Handys</strong>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.6rem; line-height:1.4;">
+              Öffnen Sie diesen Link in einem anderen Browser (z.&nbsp;B. Chrome, Safari, Smartphone oder Werkstatt-Tablet). Der andere Browser verbindet sich <strong>vollautomatisch mit 1 Klick</strong> mit allen Werkzeugen:
+            </p>
+            <div style="display:flex; gap:0.4rem; align-items:center; margin-bottom:0.5rem;">
+              <input type="text" id="jsonbin-share-url" readonly class="form-input" style="flex:1; font-family:monospace; font-size:0.8rem; background:var(--bg-surface);">
+              <button type="button" class="btn btn-primary" id="btn-copy-share-url" style="white-space:nowrap; font-size:0.82rem; padding:0.45rem 0.85rem;">
+                📋 Link kopieren
+              </button>
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+              <span>Aktive Bin-ID:</span>
+              <code id="jsonbin-current-binid-text" style="font-weight:700; color:var(--text-title); background:rgba(0,0,0,0.2); padding:0.15rem 0.4rem; border-radius:4px;"></code>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-binid-only" style="padding:0.15rem 0.5rem; font-size:0.75rem;">📋 Nur ID kopieren</button>
             </div>
           </div>
 
@@ -1032,23 +1055,25 @@
           <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:10px; padding:1rem; margin-bottom:1rem;">
             <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
               <span style="font-size:1.2rem;">🔗</span>
-              <strong style="color:var(--text-title); font-size:0.95rem;">Bestehenden JSONBin-Bin verbinden</strong>
+              <strong style="color:var(--text-title); font-size:0.95rem;">Bestehenden JSONBin-Bin verbinden (in diesem Browser)</strong>
             </div>
             <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem; line-height:1.4;">
-              Geben Sie Ihre vorhandene Bin-ID und Ihren Master-Key ein, um die Werkzeuge aus der Cloud zu synchronisieren:
+              Fügen Sie hier die <strong>Bin-ID</strong> (oder den kompletten JSONBin-Link) ein. Bei öffentlichen Bins (Public Bin) wird <strong>kein Master-Key benötigt</strong>!
             </p>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-bottom:0.75rem;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
               <div>
-                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Bin-ID (24 Zeichen):</label>
-                <input type="text" id="jsonbin-manual-binid" placeholder="z.B. 66e01a47e41b4d34e427189a" class="form-input" style="font-family:monospace; font-size:0.85rem;">
+                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Bin-ID oder Link:</label>
+                <input type="text" id="jsonbin-manual-binid" placeholder="z.B. 6aa9246bffd5d1605309592b oder voller Link" class="form-input" style="font-family:monospace; font-size:0.85rem;">
+                <div id="jsonbin-binid-hint" style="font-size:0.72rem; color:var(--text-muted); margin-top:0.25rem;">24-stellige Hex-ID (z.&nbsp;B. <code>6aa9246bffd5d1605309592b</code>)</div>
               </div>
               <div>
-                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Master-Key (X-Master-Key):</label>
-                <input type="password" id="jsonbin-manual-apikey" placeholder="$2a$10$..." class="form-input" style="font-family:monospace; font-size:0.85rem;">
+                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Master-Key (optional):</label>
+                <input type="password" id="jsonbin-manual-apikey" placeholder="Bei öffentlichem Bin leer lassen" class="form-input" style="font-family:monospace; font-size:0.85rem;">
+                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.25rem;">Nur nötig, falls der Bin auf „privat“ steht</div>
               </div>
             </div>
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-              <button type="button" class="btn btn-secondary" id="btn-jsonbin-connect" style="flex:1;">
+              <button type="button" class="btn btn-primary" id="btn-jsonbin-connect" style="flex:1;">
                 🔗 Verbinden & Daten laden
               </button>
               <button type="button" class="btn btn-secondary" id="btn-jsonbin-test" style="flex:1;">
@@ -1065,6 +1090,9 @@
             <button type="button" class="btn btn-secondary" id="btn-jsonbin-pull-tools" style="flex:1 1 45%; font-size:0.85rem;">
               📥 Von JSONBin neu laden
             </button>
+            <button type="button" class="btn btn-secondary" id="btn-jsonbin-make-public" style="flex:1 1 100%; font-size:0.85rem; display:none; background:rgba(37,99,235,0.08); border-color:var(--primary); color:var(--primary);">
+              🌐 Vorhandenen Bin auf Öffentlich umstellen (Public)
+            </button>
             <button type="button" class="btn btn-secondary" id="btn-force-sync" style="flex:1 1 45%; font-size:0.85rem;">
               🔄 Server-Abgleich
             </button>
@@ -1079,10 +1107,10 @@
             <ol style="margin:0 0 0.5rem 1.25rem; padding:0; color:var(--text-base);">
               <li>Kostenlos registrieren auf <a href="https://jsonbin.io" target="_blank" rel="noopener noreferrer" style="color:var(--primary); text-decoration:underline;">jsonbin.io</a></li>
               <li>Im Menü auf <strong>API Keys</strong> klicken und den <strong>Master Key</strong> kopieren</li>
-              <li>Oben bei <strong>Schnellstart</strong> einfügen und auf <em>„Bin jetzt anlegen“</em> klicken</li>
+              <li>Oben bei <strong>Schnellstart</strong> einfügen und auf <em>„Öffentlichen Bin anlegen“</em> klicken. Der Bin wird direkt als <strong>öffentlicher Cloud-Speicher</strong> angelegt.</li>
             </ol>
             <div style="color:var(--success); font-size:0.75rem;">
-              🛡️ <strong>Ergebnis:</strong> Ihre Werkzeuge sind für immer sicher in der Cloud. Selbst wenn Sie den Browserverlauf oder LocalStorage in Edge leeren, bleiben alle Werkzeugdaten vollständig erhalten!
+              🛡️ <strong>Ergebnis:</strong> Ihre Werkzeuge sind sicher und öffentlich abrufbar in der Cloud. Selbst wenn Sie den Browserverlauf oder LocalStorage in Edge leeren, bleiben alle Werkzeugdaten vollständig erhalten!
             </div>
           </div>
 
@@ -1361,15 +1389,28 @@
       } catch(e) {}
     }
 
+    function extractBinId(input) {
+      if (!input) return '';
+      const str = String(input).trim();
+      const m = str.match(/([a-f0-9]{24})/i);
+      if (m) return m[1].toLowerCase();
+      return str.replace(/[^a-zA-Z0-9_-]/g, '');
+    }
+
     function updateJsonBinUI() {
       const banner = document.getElementById('jsonbin-status-banner');
       const icon = document.getElementById('jsonbin-status-icon');
       const title = document.getElementById('jsonbin-status-title');
       const desc = document.getElementById('jsonbin-status-desc');
       const badge = document.getElementById('jsonbin-badge');
+      const privacyBadge = document.getElementById('jsonbin-privacy-badge');
+      const makePublicBtn = document.getElementById('btn-jsonbin-make-public');
       const disconnectBtn = document.getElementById('btn-jsonbin-disconnect');
       const binInput = document.getElementById('jsonbin-manual-binid');
       const keyInput = document.getElementById('jsonbin-manual-apikey');
+      const shareBox = document.getElementById('jsonbin-share-box');
+      const shareUrlInput = document.getElementById('jsonbin-share-url');
+      const curBinIdText = document.getElementById('jsonbin-current-binid-text');
 
       if (binInput && jsonbinConfig.binId) binInput.value = jsonbinConfig.binId;
       if (keyInput && jsonbinConfig.apiKey) keyInput.value = jsonbinConfig.apiKey;
@@ -1380,12 +1421,34 @@
           banner.style.borderColor = 'rgba(34,197,94,0.3)';
         }
         if (icon) icon.textContent = '🟢';
-        if (title) title.innerHTML = 'Verbunden mit JSONBin-Bin: <code style="background:rgba(0,0,0,0.3); padding:0.1rem 0.35rem; border-radius:4px;">' + escapeAttr(jsonbinConfig.binId) + '</code>';
+        if (title) title.innerHTML = 'Verbunden mit JSONBin: <code style="background:rgba(0,0,0,0.3); padding:0.1rem 0.35rem; border-radius:4px;">' + escapeAttr(jsonbinConfig.binId) + '</code>';
         const syncText = jsonbinConfig.lastSync ? new Date(jsonbinConfig.lastSync).toLocaleString('de-DE') : 'Aktiv';
         if (desc) desc.textContent = 'Dauerhaft in der Cloud gesichert • Letzter Abgleich: ' + syncText;
         if (badge) {
           badge.className = 'badge badge-success';
           badge.textContent = 'Cloud Aktiv';
+        }
+        if (privacyBadge) {
+          privacyBadge.style.display = 'inline-block';
+          if (jsonbinConfig.isPrivate) {
+            privacyBadge.textContent = '🔒 Privat';
+            privacyBadge.style.background = 'rgba(239,68,68,0.15)';
+            privacyBadge.style.color = 'var(--danger)';
+            privacyBadge.style.borderColor = 'rgba(239,68,68,0.3)';
+            if (makePublicBtn) makePublicBtn.style.display = 'inline-block';
+          } else {
+            privacyBadge.textContent = '🌐 Öffentlich (Public)';
+            privacyBadge.style.background = 'rgba(59,130,246,0.15)';
+            privacyBadge.style.color = 'var(--primary)';
+            privacyBadge.style.borderColor = 'rgba(59,130,246,0.3)';
+            if (makePublicBtn) makePublicBtn.style.display = 'none';
+          }
+        }
+        if (shareBox) {
+          shareBox.style.display = 'block';
+          const link = window.location.origin + window.location.pathname + '?bin=' + encodeURIComponent(jsonbinConfig.binId) + (jsonbinConfig.apiKey ? '&key=' + encodeURIComponent(jsonbinConfig.apiKey) : '');
+          if (shareUrlInput) shareUrlInput.value = link;
+          if (curBinIdText) curBinIdText.textContent = jsonbinConfig.binId;
         }
         if (disconnectBtn) disconnectBtn.style.display = 'inline-block';
       } else {
@@ -1395,11 +1458,14 @@
         }
         if (icon) icon.textContent = '☁️';
         if (title) title.textContent = 'JSONBin.io Cloud-Speicher nicht eingerichtet';
-        if (desc) desc.textContent = 'Geben Sie unten Ihren Master-Key ein, um die Cloud-Sicherung dauerhaft zu aktivieren.';
+        if (desc) desc.textContent = 'Verbinden Sie Ihre Bin-ID oder erstellen Sie einen neuen öffentlichen Bin für dauerhafte Cloud-Sicherung.';
         if (badge) {
           badge.className = 'badge badge-warning';
           badge.textContent = 'Nur Lokal';
         }
+        if (privacyBadge) privacyBadge.style.display = 'none';
+        if (shareBox) shareBox.style.display = 'none';
+        if (makePublicBtn) makePublicBtn.style.display = 'none';
         if (disconnectBtn) disconnectBtn.style.display = 'none';
       }
       updateSyncIndicator(jsonbinConfig.enabled && jsonbinConfig.binId ? 'online' : 'server');
@@ -1408,15 +1474,17 @@
     async function initJsonBin() {
       loadJsonBinConfigLocal();
 
-      // Check URL parameters (e.g. ?bin=...&key=...) for instant 1-click configuration
+      // Check URL parameters (e.g. ?bin=...&key=...) for instant 1-click configuration on secondary devices
       try {
         const params = new URLSearchParams(window.location.search);
         const pBin = params.get('bin');
         const pKey = params.get('key');
-        if (pBin && pKey) {
+        const cleanedPBin = extractBinId(pBin);
+        if (cleanedPBin) {
           jsonbinConfig.enabled = true;
-          jsonbinConfig.binId = pBin.trim();
-          jsonbinConfig.apiKey = pKey.trim();
+          jsonbinConfig.binId = cleanedPBin;
+          if (pKey) jsonbinConfig.apiKey = pKey.trim();
+          jsonbinConfig.isPrivate = false;
           jsonbinConfig.lastSync = new Date().toISOString();
           saveJsonBinConfigLocal();
           fetch('/api/jsonbin/config', {
@@ -1424,6 +1492,8 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(jsonbinConfig)
           }).catch(() => {});
+          // Direkt Werkzeuge laden
+          pullFromJsonBinDirect(false);
         }
       } catch(e) {}
 
@@ -1433,11 +1503,18 @@
         if (res.ok) {
           const srvCfg = await res.json();
           if (srvCfg.enabled && srvCfg.binId) {
+            const prevBin = jsonbinConfig.binId;
+            const cleanedSrvBin = extractBinId(srvCfg.binId);
             jsonbinConfig.enabled = true;
-            jsonbinConfig.binId = srvCfg.binId;
+            jsonbinConfig.binId = cleanedSrvBin;
+            jsonbinConfig.isPrivate = Boolean(srvCfg.isPrivate);
             jsonbinConfig.lastSync = srvCfg.lastSync;
             saveJsonBinConfigLocal();
-          } else if (jsonbinConfig.enabled && jsonbinConfig.binId && jsonbinConfig.apiKey) {
+            // Wenn in diesem Browser noch keine Werkzeuge geladen sind oder sich die Bin-ID geändert hat:
+            if (tools.length === 0 || prevBin !== cleanedSrvBin) {
+              pullFromJsonBinDirect(false);
+            }
+          } else if (jsonbinConfig.enabled && jsonbinConfig.binId) {
             // Server hat noch keine Config, aber Client hat sie: an Server senden
             fetch('/api/jsonbin/config', {
               method: 'POST',
@@ -1461,19 +1538,18 @@
           updatedAt: new Date().toISOString()
         };
 
-        // 1. Direkt im Browser an JSONBin senden (falls Key im Browser vorhanden)
-        if (jsonbinConfig.apiKey) {
-          fetch('https://api.jsonbin.io/v3/b/' + jsonbinConfig.binId, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Master-Key': jsonbinConfig.apiKey
-            },
-            body: JSON.stringify(payload)
-          }).catch(function(err) {
-            console.warn('Direct browser push to JSONBin failed:', err);
-          });
+        // 1. Direkt im Browser an JSONBin senden
+        const headers = { 'Content-Type': 'application/json' };
+        if (jsonbinConfig.apiKey && jsonbinConfig.apiKey.trim()) {
+          headers['X-Master-Key'] = jsonbinConfig.apiKey.trim();
         }
+        fetch('https://api.jsonbin.io/v3/b/' + jsonbinConfig.binId, {
+          method: 'PUT',
+          headers: headers,
+          body: JSON.stringify(payload)
+        }).catch(function(err) {
+          console.warn('Direct browser push to JSONBin failed:', err);
+        });
 
         // 2. Auch Backend anweisen zu sichern
         const sRes = await fetch('/api/jsonbin/sync', {
@@ -1521,9 +1597,11 @@
         } catch(e) {}
 
         // Versuche 2: Direkt aus dem Browser abrufen (falls Backend nichts lieferte)
-        if (!loadedTools && jsonbinConfig.apiKey) {
+        if (!loadedTools && jsonbinConfig.binId) {
+          const headers = {};
+          if (jsonbinConfig.apiKey) headers['X-Master-Key'] = jsonbinConfig.apiKey;
           const bRes = await fetch('https://api.jsonbin.io/v3/b/' + jsonbinConfig.binId + '/latest', {
-            headers: { 'X-Master-Key': jsonbinConfig.apiKey }
+            headers: headers
           });
           if (bRes.ok) {
             const bData = await bRes.json();
@@ -2556,11 +2634,12 @@
           jsonbinConfig.enabled = true;
           jsonbinConfig.binId = data.binId;
           jsonbinConfig.apiKey = key;
+          jsonbinConfig.isPrivate = false;
           jsonbinConfig.lastSync = new Date().toISOString();
           saveJsonBinConfigLocal();
           updateJsonBinUI();
           if (keyInput) keyInput.value = '';
-          showToast('🎉 Cloud-Bin erstellt! ' + tools.length + ' Werkzeuge gesichert.', 'success');
+          showToast('🎉 Öffentlicher Cloud-Bin erstellt! ' + tools.length + ' Werkzeuge gesichert.', 'success');
         } else {
           showToast('❌ ' + (data.error || 'Erstellung fehlgeschlagen'), 'warning');
         }
@@ -2572,16 +2651,58 @@
       }
     });
 
-    // Connect Existing Bin
+    // Auto-detect and clean Bin-ID on input or paste
+    safeOn('jsonbin-manual-binid', 'input', function(e) {
+      const val = e.target.value.trim();
+      const cleaned = extractBinId(val);
+      const hint = document.getElementById('jsonbin-binid-hint');
+      if (cleaned && cleaned.length === 24) {
+        if (val !== cleaned && val.length > 24) e.target.value = cleaned;
+        if (hint) hint.innerHTML = '<span style="color:var(--success); font-weight:600;">✅ Gültige 24-stellige Bin-ID erkannt</span>';
+      } else if (hint) {
+        hint.innerHTML = '<span style="color:var(--text-muted);">24-stellige Hex-ID (z.&nbsp;B. <code>6aa9246bffd5d1605309592b</code>)</span>';
+      }
+    });
+
+    // Copy Share URL for other devices
+    safeOn('btn-copy-share-url', 'click', function() {
+      const input = document.getElementById('jsonbin-share-url');
+      if (input && input.value) {
+        navigator.clipboard.writeText(input.value).then(() => {
+          showToast('📋 Kopplungs-Link kopiert! Öffnen Sie ihn auf Ihrem anderen Gerät.', 'success');
+        }).catch(() => {
+          input.select();
+          document.execCommand('copy');
+          showToast('📋 Kopplungs-Link in die Zwischenablage kopiert!', 'success');
+        });
+      }
+    });
+
+    // Copy Bin-ID only
+    safeOn('btn-copy-binid-only', 'click', function() {
+      if (jsonbinConfig.binId) {
+        navigator.clipboard.writeText(jsonbinConfig.binId).then(() => {
+          showToast('📋 Bin-ID kopiert: ' + jsonbinConfig.binId, 'success');
+        }).catch(() => {
+          showToast('📋 Bin-ID: ' + jsonbinConfig.binId, 'info');
+        });
+      }
+    });
+
+    // Connect Existing Bin (From this or any other browser)
     safeOn('btn-jsonbin-connect', 'click', async function() {
       const binInput = document.getElementById('jsonbin-manual-binid');
       const keyInput = document.getElementById('jsonbin-manual-apikey');
-      const binId = binInput ? binInput.value.trim() : '';
+      const rawBin = binInput ? binInput.value.trim() : '';
+      const cleanBinId = extractBinId(rawBin);
       const apiKey = keyInput ? keyInput.value.trim() : '';
 
-      if (!binId) {
-        showToast('⚠️ Bitte geben Sie eine Bin-ID ein', 'warning');
+      if (!cleanBinId) {
+        showToast('⚠️ Bitte geben Sie eine gültige 24-stellige Bin-ID ein', 'warning');
         return;
+      }
+      if (binInput && binInput.value !== cleanBinId) {
+        binInput.value = cleanBinId;
       }
 
       const btn = document.getElementById('btn-jsonbin-connect');
@@ -2589,25 +2710,103 @@
       btn.textContent = '⏳ Verbinde...';
       btn.disabled = true;
 
+      let isSuccess = false;
+      let isPrivate = false;
+      let errorMessage = '';
+
+      // 1. Versuch: Über Backend verbinden
       try {
         const data = await safeFetchJson('/api/jsonbin/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: true, binId: binId, apiKey: apiKey })
+          body: JSON.stringify({ enabled: true, binId: cleanBinId, apiKey: apiKey })
+        });
+        if (data && data.success) {
+          isSuccess = true;
+          isPrivate = Boolean(data.isPrivate);
+        } else if (data && data.error) {
+          errorMessage = data.error;
+        }
+      } catch (err) {
+        errorMessage = err.message;
+      }
+
+      // 2. Versuch: Wenn Backend scheitert, direkt im Browser testen
+      if (!isSuccess) {
+        try {
+          const headers = {};
+          if (apiKey) headers['X-Master-Key'] = apiKey;
+          const directRes = await fetch('https://api.jsonbin.io/v3/b/' + cleanBinId + '/latest', {
+            headers: headers
+          });
+          if (directRes.ok) {
+            const dData = await directRes.json();
+            isSuccess = true;
+            isPrivate = Boolean(dData.metadata && dData.metadata.private);
+            // Server im Hintergrund informieren
+            fetch('/api/jsonbin/config', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ enabled: true, binId: cleanBinId, apiKey: apiKey })
+            }).catch(() => {});
+          } else {
+            const errTxt = await directRes.text();
+            if (directRes.status === 404) errorMessage = 'Bin-ID nicht gefunden (404). Bitte prüfen Sie die ID.';
+            else if (directRes.status === 401) errorMessage = 'Dieser Bin ist privat! Bitte Master-Key eingeben.';
+            else errorMessage = 'Fehler ' + directRes.status + ': ' + errTxt.slice(0, 100);
+          }
+        } catch (dErr) {
+          if (!errorMessage) errorMessage = dErr.message;
+        }
+      }
+
+      if (!isSuccess) {
+        showToast('❌ Verbindung fehlgeschlagen: ' + errorMessage, 'warning');
+        btn.textContent = origText;
+        btn.disabled = false;
+        return;
+      }
+
+      try {
+        jsonbinConfig.enabled = true;
+        jsonbinConfig.binId = cleanBinId;
+        if (apiKey) jsonbinConfig.apiKey = apiKey;
+        jsonbinConfig.isPrivate = isPrivate;
+        jsonbinConfig.lastSync = new Date().toISOString();
+        saveJsonBinConfigLocal();
+        updateJsonBinUI();
+
+        // Werkzeuge aus dem neu verbundenen Bin laden
+        const pulled = await pullFromJsonBinDirect(true);
+        const privText = jsonbinConfig.isPrivate ? ' (Privat)' : ' (Öffentlich)';
+        showToast('✅ Erfolgreich mit JSONBin' + privText + ' verbunden! (' + tools.length + ' Werkzeuge geladen)', 'success');
+      } catch (err) {
+        showToast('❌ Fehler beim Laden der Daten: ' + err.message, 'warning');
+      } finally {
+        btn.textContent = origText;
+        btn.disabled = false;
+      }
+    });
+
+    // Make Existing Bin Public
+    safeOn('btn-jsonbin-make-public', 'click', async function() {
+      const btn = document.getElementById('btn-jsonbin-make-public');
+      const origText = btn.textContent;
+      btn.textContent = '⏳ Stelle auf öffentlich...';
+      btn.disabled = true;
+      try {
+        const data = await safeFetchJson('/api/jsonbin/set-public', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ binId: jsonbinConfig.binId, apiKey: jsonbinConfig.apiKey })
         });
         if (data.success) {
-          jsonbinConfig.enabled = true;
-          jsonbinConfig.binId = binId;
-          jsonbinConfig.apiKey = apiKey;
-          jsonbinConfig.lastSync = new Date().toISOString();
+          jsonbinConfig.isPrivate = false;
           saveJsonBinConfigLocal();
           updateJsonBinUI();
-
-          // Werkzeuge aus dem neu verbundenen Bin laden
-          await pullFromJsonBinDirect(true);
-          showToast('✅ Erfolgreich mit JSONBin verbunden!', 'success');
+          showToast('🌐 ' + (data.message || 'Bin ist jetzt öffentlich!'), 'success');
         } else {
-          showToast('❌ Verbindung fehlgeschlagen: ' + (data.error || 'Ungültige Bin-ID oder Key'), 'warning');
+          showToast('❌ ' + (data.error || 'Fehler beim Umstellen'), 'warning');
         }
       } catch (err) {
         showToast('❌ Fehler: ' + err.message, 'warning');
@@ -2621,30 +2820,44 @@
     safeOn('btn-jsonbin-test', 'click', async function() {
       const binInput = document.getElementById('jsonbin-manual-binid');
       const keyInput = document.getElementById('jsonbin-manual-apikey');
-      const binId = (binInput ? binInput.value.trim() : '') || jsonbinConfig.binId;
+      const rawBin = (binInput ? binInput.value.trim() : '') || jsonbinConfig.binId;
+      const cleanBinId = extractBinId(rawBin);
       const apiKey = (keyInput ? keyInput.value.trim() : '') || jsonbinConfig.apiKey;
 
-      if (!binId) {
-        showToast('⚠️ Keine Bin-ID zum Testen vorhanden', 'warning');
+      if (!cleanBinId) {
+        showToast('⚠️ Keine gültige Bin-ID zum Testen vorhanden', 'warning');
         return;
       }
       const btn = document.getElementById('btn-jsonbin-test');
       btn.textContent = '⚡ Teste...';
+      btn.disabled = true;
+
       try {
-        const data = await safeFetchJson('/api/jsonbin/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: true, binId: binId, apiKey: apiKey })
+        const headers = {};
+        if (apiKey) headers['X-Master-Key'] = apiKey;
+        const testRes = await fetch('https://api.jsonbin.io/v3/b/' + cleanBinId + '/latest', {
+          headers: headers
         });
-        if (data.success) {
-          showToast('✅ Verbindung erfolgreich! Bin ist erreichbar.', 'success');
+        if (testRes.ok) {
+          const tData = await testRes.json();
+          const isPriv = Boolean(tData.metadata && tData.metadata.private);
+          const privText = isPriv ? '🔒 Privat (Key gültig)' : '🌐 Öffentlich (für alle Browser freigegeben)';
+          showToast('✅ Verbindung erfolgreich! Status: ' + privText, 'success');
         } else {
-          showToast('❌ Verbindung fehlgeschlagen: ' + (data.error || 'Fehler'), 'warning');
+          const errTxt = await testRes.text();
+          if (testRes.status === 404) {
+            showToast('❌ Bin-ID nicht gefunden (404).', 'warning');
+          } else if (testRes.status === 401) {
+            showToast('❌ Zugriff verweigert (401). Der Bin ist privat und benötigt den Master-Key.', 'warning');
+          } else {
+            showToast('❌ Testfehler: HTTP ' + testRes.status, 'warning');
+          }
         }
       } catch(e) {
         showToast('❌ Testfehler: ' + e.message, 'warning');
       } finally {
         btn.textContent = '⚡ Verbindung testen';
+        btn.disabled = false;
       }
     });
 
