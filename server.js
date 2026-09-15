@@ -10,7 +10,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '15mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(__dirname));
 
 const DATA_DIR = path.join(__dirname, 'data');
@@ -769,6 +770,19 @@ Antworte AUSSCHLIESSLICH mit gültigem JSON nach folgendem Format:
 // Fallback to index.html
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Global JSON error handler
+app.use((err, req, res, next) => {
+  console.error('Express Error Handler caught:', err);
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    return res.status(413).json({
+      error: 'Die Datei ist zu groß für die Übertragung. Das Bild wird automatisch vor dem Senden optimiert.'
+    });
+  }
+  res.status(err.status || 500).json({
+    error: err.message || 'Interner Serverfehler bei der Verarbeitung'
+  });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

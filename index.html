@@ -3675,23 +3675,79 @@
       document.getElementById('ai-result-section').style.display = 'none';
     }
 
+    // Automatische clientseitige Bildoptimierung für Werkstattfotos (z. B. Smartphone 12-48MP)
+    function compressImageIfNeeded(dataUrl, maxDim = 2048, quality = 0.88) {
+      return new Promise(function(resolve) {
+        if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+          return resolve(dataUrl);
+        }
+        const img = new Image();
+        img.onload = function() {
+          let width = img.width;
+          let height = img.height;
+
+          // Falls Bild bereits kompakt ist, beibehalten
+          if (width <= maxDim && height <= maxDim && dataUrl.length < 1.8 * 1024 * 1024) {
+            return resolve(dataUrl);
+          }
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressed = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressed);
+        };
+        img.onerror = function() {
+          resolve(dataUrl);
+        };
+        img.src = dataUrl;
+      });
+    }
+
     function handleAiFile(file) {
       if (!file) return;
       const errEl = document.getElementById('ai-upload-error');
       if (errEl) errEl.style.display = 'none';
 
-      // Prüfe Dateigröße (max 15 MB)
-      if (file.size > 15 * 1024 * 1024) {
+      // Prüfe Dateigröße (max 30 MB vor Komprimierung)
+      if (file.size > 30 * 1024 * 1024) {
         if (errEl) {
-          errEl.textContent = '❌ Die Datei ist zu groß (max. 15 MB erlaubt).';
+          errEl.textContent = '❌ Die Datei ist zu groß (max. 30 MB erlaubt).';
           errEl.style.display = 'block';
         }
         return;
       }
 
       const reader = new FileReader();
-      reader.onload = function(e) {
-        const base64Url = e.target.result;
+      reader.onload = async function(e) {
+        let base64Url = e.target.result;
+
+        // Falls Bild: Automatisch auf web-optimierte Auflösung skalieren (spart Bandbreite & verhindert 413)
+        if (file.type && file.type.startsWith('image/')) {
+          try {
+            base64Url = await compressImageIfNeeded(base64Url, 2048, 0.88);
+          } catch(e) {
+            console.warn('Bildoptimierung übersprungen:', e);
+          }
+        }
+
         currentAiFile = {
           base64: base64Url,
           name: file.name,
@@ -3787,7 +3843,29 @@
           aiStepTimer = null;
         }
 
-        const data = await response.json();
+        let data = null;
+        const contentType = (response.headers && response.headers.get('content-type')) || '';
+
+        if (contentType.includes('application/json')) {
+          try {
+            data = await response.json();
+          } catch(e) {
+            console.warn('JSON-Fehler beim Parsen der Server-Antwort:', e);
+          }
+        }
+
+        if (!data) {
+          const rawText = await response.text().catch(function() { return ''; });
+          if (response.status === 413 || rawText.includes('413') || rawText.includes('Too Large')) {
+            throw new Error('Das Bild ist zu groß für die Übertragung. Bitte ein kleineres Bild wählen oder erneut versuchen.');
+          } else if (response.status === 504 || response.status === 502) {
+            throw new Error('Zeitüberschreitung bei der KI-Anfrage (Gateway Timeout). Bitte versuche es erneut.');
+          } else if (response.status === 503 || rawText.includes('503') || rawText.includes('high demand')) {
+            throw new Error('Die KI-Server erleben aktuell eine kurze Lastspitze. Bitte kurz warten und erneut versuchen.');
+          } else {
+            throw new Error('Server-Antwortfehler (' + response.status + '). Bitte erneut versuchen.');
+          }
+        }
 
         if (!response.ok || !data.success || !data.analysis) {
           throw new Error(data.error || 'Serverfehler bei der Zeichnungsanalyse.');
