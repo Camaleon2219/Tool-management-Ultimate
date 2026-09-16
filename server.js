@@ -722,7 +722,7 @@ AUFGABEN:
    - Gib exakt die "matchedToolId" und "matchedToolName" aus dem Bestand an.
    - Gib an, wo das Werkzeug liegt (location und magazine).
    - Kennzeichne, ob es sofort verfügbar ist.
-   - WICHTIG: Falls ein Werkzeug (z.B. Reibahle, spezieller Kernlochbohrer oder Gewindebohrer) NICHT im Bestand existiert:
+   - WICHTIG: Falls ein Werkzeug (z.B. NC-Anbohrer, Zentrierbohrer, Fasenfräser, Reibahle, spezieller Kernlochbohrer oder Gewindebohrer) NICHT im Bestand existiert:
      * Setze "isAvailable": false, "matchedToolId": null, "matchedToolName": null
      * Gib bei "recommendedAlternative" die genaue Werkzeugempfehlung an (z.B. "VHM-Bohrer Ø6.8 mm für M8").
 

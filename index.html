@@ -827,8 +827,11 @@
         <option value="all">Alle Typen</option>
         <option value="Bohrer">Bohrer</option>
         <option value="VHM-Bohrer">VHM-Bohrer</option>
+        <option value="NC-Anbohrer">NC-Anbohrer</option>
+        <option value="Zentrierbohrer">Zentrierbohrer</option>
         <option value="Fräser">Fräser</option>
         <option value="VHM-Fräser">VHM-Fräser</option>
+        <option value="Fasenfräser">Fasenfräser</option>
         <option value="Planfräser">Planfräser</option>
         <option value="Radiusfräser">Radiusfräser</option>
         <option value="Sonderfräser">Sonderfräser</option>
@@ -893,8 +896,11 @@
               <select id="tool-category" required class="form-select">
                 <option value="Bohrer">Bohrer</option>
                 <option value="VHM-Bohrer">VHM-Bohrer</option>
+                <option value="NC-Anbohrer">NC-Anbohrer</option>
+                <option value="Zentrierbohrer">Zentrierbohrer</option>
                 <option value="Fräser">Fräser</option>
                 <option value="VHM-Fräser">VHM-Fräser</option>
+                <option value="Fasenfräser">Fasenfräser</option>
                 <option value="Planfräser">Planfräser</option>
                 <option value="Radiusfräser">Radiusfräser</option>
                 <option value="Sonderfräser">Sonderfräser</option>
@@ -925,9 +931,11 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Icon (Emoji)</label>
-              <input type="text" id="tool-icon" maxlength="2" placeholder="z.B. 🔩 🌀 ⏹️ ⚪ ✨ 💠" class="form-input">
+              <input type="text" id="tool-icon" maxlength="2" placeholder="z.B. 🔩 🌀 🎯 📐 ⏹️ ⚪" class="form-input">
               <div style="display:flex; gap:0.25rem; margin-top:0.35rem; flex-wrap:wrap;" id="icon-quick-chips">
                 <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="🔩" title="Bohrer / Schrauben">🔩</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="🎯" title="NC-Anbohrer / Zentrierbohrer">🎯</button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="📐" title="Fasenfräser / Reibahle">📐</button>
                 <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="🌀" title="Fräser">🌀</button>
                 <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="⏹️" title="Planfräser">⏹️</button>
                 <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="⚪" title="Radiusfräser">⚪</button>
@@ -935,7 +943,6 @@
                 <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="💠" title="Wendeplatten">💠</button>
                 <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="🔧" title="Gewindebohrer">🔧</button>
                 <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="🔺" title="Senker">🔺</button>
-                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="📐" title="Reibahle">📐</button>
                 <button type="button" class="btn btn-secondary btn-sm" style="padding:0.12rem 0.4rem; font-size:0.85rem;" data-emoji="⚙️" title="Sonstiges">⚙️</button>
               </div>
             </div>
@@ -2543,7 +2550,9 @@
 
     function defaultIconForCategory(cat) {
       const map = {
-        'Bohrer': '🔩', 'VHM-Bohrer': '🔩', 'Fräser': '🌀', 'VHM-Fräser': '🌀',
+        'Bohrer': '🔩', 'VHM-Bohrer': '🔩',
+        'NC-Anbohrer': '🎯', 'NC Anbohrer': '🎯', 'Zentrierbohrer': '🎯',
+        'Fräser': '🌀', 'VHM-Fräser': '🌀', 'Fasenfräser': '📐',
         'Planfräser': '⏹️', 'Radiusfräser': '⚪', 'Sonderfräser': '✨',
         'Gewindebohrer': '🔧', 'Gewindefräser': '🔧', 'Senker': '🔺', 'Reibahle': '📐',
         'T-Nutenfräser': '⊏', 'Einstechfräser': '▬',
@@ -2572,8 +2581,12 @@
       const status = document.getElementById('filter-status').value;
       const category = document.getElementById('filter-category').value;
       return tools.filter(function(t) {
-        const s = !search || [t.name, t.diameter, t.manufacturer, t.sku, t.magazine, t.location, t.machine, t.coolant, t.holder, t.zLength, t.quantity ? (t.quantity + ' stk') : ''].some(function(v) { return (v || '').toLowerCase().includes(search); });
-        return s && (status === 'all' || t.status === status) && (category === 'all' || t.category === category);
+        const s = !search || [t.name, t.category, t.diameter, t.manufacturer, t.sku, t.magazine, t.location, t.machine, t.coolant, t.holder, t.zLength, t.quantity ? (t.quantity + ' stk') : ''].some(function(v) { return (v || '').toLowerCase().includes(search); });
+        const catMatch = category === 'all' || t.category === category ||
+          (category === 'NC-Anbohrer' && (t.category === 'NC Anbohrer' || t.category === 'NC-Anbohrer')) ||
+          (category === 'Zentrierbohrer' && t.category === 'Zentrierbohrer') ||
+          (category === 'Fasenfräser' && t.category === 'Fasenfräser');
+        return s && (status === 'all' || t.status === status) && catMatch;
       }).sort(function(a, b) { return a.name.localeCompare(b.name); });
     }
 
