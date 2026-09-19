@@ -326,6 +326,23 @@ app.post('/api/tools', (req, res) => {
   res.status(400).json({ error: 'tools must be an array' });
 });
 
+app.post('/api/backup/restore', (req, res) => {
+  const { tools: restoredTools, history: restoredHistory } = req.body;
+  if (!Array.isArray(restoredTools)) {
+    return res.status(400).json({ error: 'tools must be an array' });
+  }
+  writeTools(restoredTools);
+  if (Array.isArray(restoredHistory) && restoredHistory.length > 0) {
+    writeHistory(restoredHistory.slice(0, 500));
+  }
+  pushToJsonBin().catch(() => {});
+  res.json({
+    success: true,
+    toolCount: restoredTools.length,
+    historyCount: Array.isArray(restoredHistory) ? restoredHistory.length : 0
+  });
+});
+
 app.get('/api/history', (req, res) => {
   res.json({ history: readHistory() });
 });

@@ -856,6 +856,9 @@
       <button type="button" class="btn btn-ai" id="btn-open-ai-drawing" title="Technische Zeichnung hochladen & passendes Werkzeug aus Lager finden">
         <span>🤖</span> KI-Zeichnungsanalyse
       </button>
+      <button type="button" class="btn btn-secondary" id="btn-open-backup" title="JSON-Backup herunterladen oder im anderen Browser wieder hochladen (Export / Import)" style="font-weight:500; display:inline-flex; align-items:center; gap:0.35rem;">
+        <span>💾</span> Backup & Import
+      </button>
       <button type="button" class="btn btn-secondary" id="btn-refresh-all" title="Werkzeuge & Cloud-Daten jetzt sofort aktualisieren" style="font-weight:600; display:inline-flex; align-items:center; gap:0.4rem;">
         <span id="btn-refresh-icon" style="display:inline-block; font-size:1.05rem;">🔄</span> Aktualisieren
       </button>
@@ -1261,7 +1264,10 @@
               🔄 Server-Abgleich
             </button>
             <button type="button" class="btn btn-secondary" id="btn-download-backup" style="flex:1 1 45%; font-size:0.85rem;">
-              💾 JSON-Backup-Datei
+              💾 Backup herunterladen (JSON)
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-modal-open-import" style="flex:1 1 100%; font-size:0.85rem; background:rgba(37,99,235,0.08); border-color:var(--primary); color:var(--primary); font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:0.4rem;">
+              <span>📂</span> Manuelles Backup hochladen / einspielen (Import)...
             </button>
           </div>
 
@@ -1283,6 +1289,103 @@
             <button type="button" class="btn btn-secondary btn-sm" id="btn-server-cancel" style="margin-left:auto;">Schließen</button>
           </div>
 
+        </div>
+      </div>
+    </div>
+
+    <!-- Backup & Restore Modal -->
+    <div class="modal" id="backup-modal">
+      <div class="modal-backdrop" id="backup-backdrop"></div>
+      <div class="modal-box" style="max-width: 580px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header" style="margin-bottom: 1rem;">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="font-size:1.5rem;">💾</span>
+            <div>
+              <h2 class="modal-title" style="font-size:1.15rem; line-height:1.2;">Manuelles JSON-Backup & Einspielen</h2>
+              <div style="font-size:0.75rem; color:var(--text-muted);">Werkzeuge als JSON-Datei sichern und in jedem Browser wiederherstellen</div>
+            </div>
+          </div>
+          <button type="button" class="modal-close" id="backup-modal-close">&times;</button>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:1.15rem;">
+          
+          <!-- Box 1: Export / Download -->
+          <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:10px; padding:1rem;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.4rem;">
+              <strong style="color:var(--text-title); font-size:0.95rem; display:flex; align-items:center; gap:0.4rem;">
+                <span>📥</span> Schritt 1: Backup herunterladen (Export)
+              </strong>
+              <span class="badge badge-info" id="backup-current-count-badge">0 Werkzeuge</span>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem; line-height:1.4;">
+              Lädt alle aktuell vorhandenen Werkzeuge, Bestände, QR-Codes und Änderungsprotokolle in eine kompakte <code>.json</code>-Datei auf Ihren Computer herunter.
+            </p>
+            <button type="button" class="btn btn-primary" id="btn-export-json-file" style="display:inline-flex; align-items:center; gap:0.4rem;">
+              <span>💾</span> JSON-Backup-Datei herunterladen
+            </button>
+          </div>
+
+          <!-- Box 2: Import / Upload -->
+          <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:10px; padding:1rem;">
+            <strong style="color:var(--text-title); font-size:0.95rem; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem;">
+              <span>📤</span> Schritt 2: Backup im anderen Browser einspielen (Import)
+            </strong>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem; line-height:1.4;">
+              Wählen Sie die zuvor heruntergeladene <code>.json</code>-Backup-Datei aus oder ziehen Sie sie per Drag & Drop hierher. Die Werkzeuge werden sofort in die Datenbank geladen.
+            </p>
+
+            <!-- Drag & Drop Zone -->
+            <div id="backup-dropzone" style="border:2px dashed var(--border); border-radius:8px; padding:1.25rem; text-align:center; cursor:pointer; background:rgba(255,255,255,0.02); transition:all 0.2s ease;">
+              <input type="file" id="backup-file-input" accept=".json,application/json" style="display:none;">
+              <div style="font-size:2rem; margin-bottom:0.25rem;">📂</div>
+              <div style="font-size:0.9rem; font-weight:600; color:var(--text-title); margin-bottom:0.2rem;">
+                JSON-Datei hier ablegen oder klicken zum Auswählen
+              </div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">
+                Unterstützt Backups aus dieser App oder Listen von Werkzeugen (.json)
+              </div>
+            </div>
+
+            <!-- Import Preview Box (hidden by default) -->
+            <div id="backup-preview-box" style="display:none; margin-top:0.85rem; background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.3); border-radius:8px; padding:0.85rem;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.4rem;">
+                <strong style="color:var(--text-title); font-size:0.88rem;" id="backup-preview-filename">Dateiname.json</strong>
+                <span class="badge badge-success" id="backup-preview-count">0 Werkzeuge gefunden</span>
+              </div>
+              <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.75rem;" id="backup-preview-meta"></div>
+
+              <!-- Options -->
+              <div style="font-size:0.8rem; margin-bottom:0.75rem;">
+                <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; margin-bottom:0.35rem;">
+                  <input type="radio" name="backup-mode" value="replace" checked>
+                  <span><strong>Komplett ersetzen:</strong> Vorhandene Werkzeuge durch das Backup überschreiben</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                  <input type="radio" name="backup-mode" value="merge">
+                  <span><strong>Zusammenführen:</strong> Vorhandene behalten und mit Backup ergänzen/aktualisieren</span>
+                </label>
+              </div>
+
+              <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-backup-cancel-preview">Abbrechen</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-backup-confirm-import" style="display:inline-flex; align-items:center; gap:0.3rem;">
+                  <span>✅</span> Jetzt einspielen & speichern
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Helpful hints -->
+          <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4; background:rgba(255,255,255,0.02); padding:0.75rem; border-radius:8px; border:1px solid var(--border);">
+            💡 <strong>Tipp für andere Browser:</strong> Sie können die heruntergeladene JSON-Datei einfach auf einen USB-Stick kopieren oder per Mail/Netzwerk an das Werkstatt-Tablet schicken, dort diese App im Browser aufrufen und hier hochladen. Die Werkzeuge sind danach sofort dauerhaft verfügbar.
+          </div>
+
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:1.25rem;">
+          <button type="button" class="btn btn-secondary" id="btn-backup-close">Schließen</button>
         </div>
       </div>
     </div>
@@ -3843,7 +3946,31 @@
       }
     });
 
-    safeOn('btn-download-backup', 'click', function() {
+    // ==================== MANUELLES JSON-BACKUP & WIEDERHERSTELLUNG ====================
+    let pendingImportTools = null;
+    let pendingImportHistory = null;
+
+    function openBackupModal() {
+      const modal = document.getElementById('backup-modal');
+      if (modal) {
+        const badge = document.getElementById('backup-current-count-badge');
+        if (badge) badge.textContent = tools.length + ' Werkzeuge vorhanden';
+        modal.classList.add('active');
+      }
+    }
+
+    function closeBackupModal() {
+      const modal = document.getElementById('backup-modal');
+      if (modal) modal.classList.remove('active');
+      const previewBox = document.getElementById('backup-preview-box');
+      if (previewBox) previewBox.style.display = 'none';
+      const fileInput = document.getElementById('backup-file-input');
+      if (fileInput) fileInput.value = '';
+      pendingImportTools = null;
+      pendingImportHistory = null;
+    }
+
+    function downloadBackupJson() {
       try {
         const backup = {
           app: 'FJK CNC-Werkzeugverwaltung',
@@ -3864,11 +3991,266 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast('💾 Backup heruntergeladen', 'success');
+        showToast('💾 Backup erfolgreich heruntergeladen (' + tools.length + ' Werkzeuge)', 'success');
       } catch (err) {
+        console.error('Backup download error:', err);
         showToast('❌ Fehler beim Erstellen des Backups', 'warning');
       }
+    }
+
+    function handleBackupFile(file) {
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.json') && file.type && !file.type.includes('json')) {
+        showToast('⚠️ Bitte eine gültige .json-Datei auswählen', 'warning');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const content = e.target.result;
+          const parsed = JSON.parse(content);
+          
+          let candidateTools = [];
+          let candidateHistory = [];
+          let exportDate = null;
+          let exportedBy = null;
+
+          if (Array.isArray(parsed)) {
+            candidateTools = parsed;
+          } else if (parsed && typeof parsed === 'object') {
+            if (Array.isArray(parsed.tools)) {
+              candidateTools = parsed.tools;
+            } else if (Array.isArray(parsed.data)) {
+              candidateTools = parsed.data;
+            } else if (Array.isArray(parsed.items)) {
+              candidateTools = parsed.items;
+            }
+            if (Array.isArray(parsed.history)) {
+              candidateHistory = parsed.history;
+            }
+            exportDate = parsed.exportDate || parsed.createdAt || parsed.date;
+            exportedBy = parsed.exportedBy || parsed.user;
+          }
+
+          if (!candidateTools || candidateTools.length === 0) {
+            showToast('❌ Keine gültigen Werkzeugdaten in der JSON-Datei gefunden', 'warning');
+            return;
+          }
+
+          // Validieren: Mindestens ein Name oder ID pro Werkzeug
+          const validTools = candidateTools.filter(function(t) {
+            return t && typeof t === 'object' && (t.name || t.id);
+          });
+
+          if (validTools.length === 0) {
+            showToast('❌ Keine gültigen Werkzeugelemente erkannt', 'warning');
+            return;
+          }
+
+          // In Zwischenspeicher halten
+          pendingImportTools = validTools;
+          pendingImportHistory = candidateHistory;
+
+          // Vorschau-Box aktualisieren
+          const previewBox = document.getElementById('backup-preview-box');
+          const filenameEl = document.getElementById('backup-preview-filename');
+          const countEl = document.getElementById('backup-preview-count');
+          const metaEl = document.getElementById('backup-preview-meta');
+
+          if (filenameEl) filenameEl.textContent = '📄 ' + file.name;
+          if (countEl) countEl.textContent = validTools.length + ' Werkzeuge bereit';
+          if (metaEl) {
+            let metaText = 'Größe: ' + (file.size > 1024 ? Math.round(file.size / 1024) + ' KB' : file.size + ' Bytes');
+            if (exportDate) {
+              try {
+                metaText += ' · Erstellt am: ' + new Date(exportDate).toLocaleString('de-DE');
+              } catch(e) {}
+            }
+            if (exportedBy) {
+              metaText += ' · Von: ' + exportedBy;
+            }
+            if (candidateHistory && candidateHistory.length > 0) {
+              metaText += ' · ' + candidateHistory.length + ' Protokolleinträge';
+            }
+            metaEl.textContent = metaText;
+          }
+
+          if (previewBox) previewBox.style.display = 'block';
+          showToast('📄 Datei geladen: ' + validTools.length + ' Werkzeuge gefunden', 'info');
+
+        } catch (err) {
+          console.error('Backup JSON parse error:', err);
+          showToast('❌ JSON-Datei konnte nicht gelesen werden: ' + err.message, 'warning');
+        }
+      };
+      reader.onerror = function() {
+        showToast('❌ Fehler beim Einlesen der Datei', 'warning');
+      };
+      reader.readAsText(file);
+    }
+
+    async function executeBackupImport() {
+      if (!pendingImportTools || pendingImportTools.length === 0) {
+        showToast('⚠️ Keine Werkzeuge zum Importieren bereit', 'warning');
+        return;
+      }
+
+      const modeRadio = document.querySelector('input[name="backup-mode"]:checked');
+      const mode = modeRadio ? modeRadio.value : 'replace';
+
+      const importBtn = document.getElementById('btn-backup-confirm-import');
+      if (importBtn) {
+        importBtn.disabled = true;
+        importBtn.innerHTML = '<span>⏳</span> Speichere...';
+      }
+
+      try {
+        let finalTools = [];
+        if (mode === 'merge') {
+          const existingMap = new Map();
+          tools.forEach(function(t) {
+            if (t && t.id) existingMap.set(t.id, t);
+          });
+          pendingImportTools.forEach(function(t) {
+            const id = t.id || generateId();
+            t.id = id;
+            existingMap.set(id, t);
+          });
+          finalTools = Array.from(existingMap.values());
+        } else {
+          finalTools = pendingImportTools.map(function(t) {
+            if (!t.id) t.id = generateId();
+            return t;
+          });
+        }
+
+        // 1. Lokaler Speicher
+        tools = finalTools;
+        saveToolsLocal();
+
+        // Verlauf aktualisieren wenn vorhanden
+        if (pendingImportHistory && pendingImportHistory.length > 0) {
+          if (mode === 'merge') {
+            const histMap = new Map();
+            historyEntries.forEach(function(h) { if (h && h.id) histMap.set(h.id, h); });
+            pendingImportHistory.forEach(function(h) { if (h && h.id) histMap.set(h.id, h); });
+            historyEntries = Array.from(histMap.values()).sort(function(a,b) {
+              return new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
+            }).slice(0, 500);
+          } else {
+            historyEntries = pendingImportHistory.slice(0, 500);
+          }
+          updateHistoryBadge();
+        }
+
+        // 2. Audit-Log Eintrag schreiben
+        await recordAuditLog(
+          'Backup importiert',
+          'JSON-Import',
+          'ALL',
+          'Manuelles JSON-Backup eingespielt: ' + finalTools.length + ' Werkzeuge (' + (mode === 'merge' ? 'zusammengeführt' : 'vollständig ersetzt') + ')'
+        );
+
+        // 3. Dauerhaft im Werkstatt-Server (tools.json) abspeichern
+        try {
+          const res = await fetch('/api/backup/restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tools: finalTools, history: historyEntries })
+          });
+          if (!res.ok) {
+            await saveToolsToBackend();
+          }
+        } catch(e) {
+          console.warn('Backup restore endpoint error, using fallback:', e);
+          await saveToolsToBackend();
+        }
+
+        // 4. Auch in JSONBin Cloud sichern falls aktiv
+        if (jsonbinConfig.enabled && jsonbinConfig.binId) {
+          pushToJsonBinDirect(false).catch(function() {});
+        }
+
+        // 5. UI sofort aktualisieren
+        renderStats();
+        renderGrid();
+        updateSyncIndicator('online');
+
+        showToast('✅ ' + finalTools.length + ' Werkzeuge erfolgreich importiert & gespeichert!', 'success');
+        closeBackupModal();
+
+      } catch (err) {
+        console.error('Import execution error:', err);
+        showToast('❌ Fehler beim Importieren: ' + err.message, 'warning');
+      } finally {
+        if (importBtn) {
+          importBtn.disabled = false;
+          importBtn.innerHTML = '<span>✅</span> Jetzt einspielen & speichern';
+        }
+      }
+    }
+
+    // Backup Event Listeners
+    safeOn('btn-open-backup', 'click', openBackupModal);
+    safeOn('btn-modal-open-import', 'click', function() {
+      closeServerModal();
+      openBackupModal();
     });
+    safeOn('btn-backup-close', 'click', closeBackupModal);
+    safeOn('backup-modal-close', 'click', closeBackupModal);
+    safeOn('backup-backdrop', 'click', closeBackupModal);
+    safeOn('btn-download-backup', 'click', downloadBackupJson);
+    safeOn('btn-export-json-file', 'click', downloadBackupJson);
+    safeOn('btn-backup-confirm-import', 'click', executeBackupImport);
+    safeOn('btn-backup-cancel-preview', 'click', function() {
+      const previewBox = document.getElementById('backup-preview-box');
+      if (previewBox) previewBox.style.display = 'none';
+      const fileInput = document.getElementById('backup-file-input');
+      if (fileInput) fileInput.value = '';
+      pendingImportTools = null;
+      pendingImportHistory = null;
+    });
+
+    // Dropzone & File Input Setup
+    const backupDropzone = document.getElementById('backup-dropzone');
+    const backupFileInput = document.getElementById('backup-file-input');
+
+    if (backupDropzone && backupFileInput) {
+      backupDropzone.addEventListener('click', function() {
+        backupFileInput.click();
+      });
+
+      backupFileInput.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+          handleBackupFile(e.target.files[0]);
+        }
+      });
+
+      backupDropzone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        backupDropzone.style.borderColor = 'var(--primary)';
+        backupDropzone.style.background = 'rgba(37,99,235,0.08)';
+      });
+
+      backupDropzone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        backupDropzone.style.borderColor = 'var(--border)';
+        backupDropzone.style.background = 'rgba(255,255,255,0.02)';
+      });
+
+      backupDropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        backupDropzone.style.borderColor = 'var(--border)';
+        backupDropzone.style.background = 'rgba(255,255,255,0.02)';
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleBackupFile(e.dataTransfer.files[0]);
+        }
+      });
+    }
 
     // ==================== KI-ZEICHNUNGSANALYSE & WERKZEUG-MATCHER ====================
     let currentAiFile = null;
