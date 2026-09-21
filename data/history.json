@@ -1,5 +1,17 @@
 [
   {
+    "id": "hist_series_1790018923413",
+    "timestamp": "2026-09-21T19:28:43.413Z",
+    "user": "Serien-Generator",
+    "action": "Serie generiert",
+    "toolId": "ADX-SERIE",
+    "toolName": "ADX D=3.1mm bis D=20.0mm (170 Werkzeuge)",
+    "details": "Automatische Fortführung der ADX-Bohrerreihe von Ø3.1 mm bis Ø20.0 mm (Schrittweite 0.1 mm, DIN 338 Längen, DORMER HSS-E TiAlN)",
+    "changes": [
+      "160 neue Werkzeuge hinzugefügt, Durchmesser angepasst von 3.1 bis 20.0 mm"
+    ]
+  },
+  {
     "id": "mu397fob0rt4y0dzor2",
     "timestamp": "2026-09-15T22:39:02.171Z",
     "userName": "G. Palacios",

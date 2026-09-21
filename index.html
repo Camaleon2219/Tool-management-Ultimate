@@ -847,6 +847,9 @@
         <option value="Sonstiges">Sonstiges</option>
       </select>
       <button type="button" class="btn btn-primary" id="btn-add"><span>+</span> Neues Werkzeug</button>
+      <button type="button" class="btn btn-secondary" id="btn-open-series-generator" title="Werkzeugreihe automatisch fortlaufend erstellen (z.B. von D=3.1 bis 20.0)" style="font-weight:600; display:inline-flex; align-items:center; gap:0.35rem;">
+        <span>⚡</span> Serie anlegen
+      </button>
       <button type="button" class="btn btn-secondary" id="btn-open-history" title="Änderungsprotokoll aller Werkzeuge anzeigen">
         <span>📜</span> Protokoll <span id="history-count-badge" style="background:var(--primary); color:#fff; font-size:0.7rem; font-weight:700; padding:0.12rem 0.45rem; border-radius:1rem; margin-left:0.3rem;">0</span>
       </button>
@@ -1068,6 +1071,7 @@
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Speichern</button>
             <button type="button" class="btn btn-secondary" id="btn-cancel">Abbrechen</button>
+            <button type="button" class="btn btn-secondary" id="btn-series-from-current" style="display:none;" title="Aus diesem Werkzeug eine fortlaufende Durchmesser-Serie erstellen">⚡ Als Serie fortführen...</button>
             <button type="button" class="btn btn-print" id="btn-print" style="display:none;">🖨️ Datenblatt</button>
             <button type="button" class="btn btn-label" id="btn-print-label" style="display:none;">🏷️ Etikett</button>
             <button type="button" class="btn btn-nfc" id="btn-write-nfc" style="display:none;" title="Dieses Werkzeug auf einen NFC-Chip schreiben">📡 Auf NFC schreiben</button>
@@ -1387,6 +1391,203 @@
         <div style="display:flex; justify-content:flex-end; margin-top:1.25rem;">
           <button type="button" class="btn btn-secondary" id="btn-backup-close">Schließen</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Series / Batch Generator Modal -->
+    <div class="modal" id="series-modal">
+      <div class="modal-backdrop" id="series-backdrop"></div>
+      <div class="modal-box" style="max-width: 680px; max-height: 92vh; overflow-y: auto;">
+        <div class="modal-header" style="margin-bottom: 1rem;">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="font-size:1.6rem;">⚡</span>
+            <div>
+              <h2 class="modal-title" style="font-size:1.15rem; line-height:1.2;">Werkzeugreihe / Serie automatisch erstellen</h2>
+              <div style="font-size:0.75rem; color:var(--text-muted);">Generiert automatisch fortlaufende Werkzeuge mit aufsteigendem Durchmesser (z.B. ADX D=3.1 bis 20.0 mm)</div>
+            </div>
+          </div>
+          <button type="button" class="modal-close" id="series-modal-close">&times;</button>
+        </div>
+
+        <form id="series-form" novalidate style="display:flex; flex-direction:column; gap:1rem;">
+          
+          <!-- Vorlage-Auswahl -->
+          <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:10px; padding:0.85rem;">
+            <label class="form-label" style="font-weight:600; color:var(--text-title); display:flex; align-items:center; gap:0.4rem; margin-bottom:0.35rem;">
+              <span>📋</span> Vorlage-Werkzeug wählen (übernimmt Eigenschaften):
+            </label>
+            <select id="series-template-select" class="form-select" style="font-size:0.85rem;">
+              <option value="">-- Manuell ausfüllen --</option>
+            </select>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.35rem;">
+              Wähle ein bestehendes Werkzeug als Muster. Hersteller, Schnittdaten, Bild, Beschichtung und Lagerort werden automatisch übernommen.
+            </div>
+          </div>
+
+          <!-- Namensschema & Durchmesser -->
+          <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:10px; padding:0.85rem;">
+            <strong style="color:var(--text-title); font-size:0.9rem; display:flex; align-items:center; gap:0.35rem; margin-bottom:0.75rem;">
+              <span>🏷️</span> Namensschema & Durchmesser-Bereich
+            </strong>
+
+            <div class="form-group" style="margin-bottom:0.75rem;">
+              <label class="form-label" style="font-size:0.8rem;">
+                Namens-Muster <span style="color:var(--text-muted); font-weight:normal;">(Verwende <code>{D}</code> als Platzhalter für den Durchmesser)</span>
+              </label>
+              <input type="text" id="series-name-pattern" class="form-input" value="ADX D={D}mm" placeholder="z.B. ADX D={D}mm oder VHM-Fräser Ø{D} mm" required>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:0.6rem; margin-bottom:0.6rem;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Von Ø (mm)</label>
+                <input type="text" inputmode="decimal" id="series-start-d" class="form-input" value="3.1" placeholder="z.B. 3.1 oder 3,1" required>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Bis Ø (mm)</label>
+                <input type="text" inputmode="decimal" id="series-end-d" class="form-input" value="20.0" placeholder="z.B. 20.0 oder 20,0" required>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Schrittweite (mm)</label>
+                <input type="text" inputmode="decimal" id="series-step-d" class="form-input" value="0.1" placeholder="z.B. 0.1 oder 0,1" required>
+              </div>
+            </div>
+
+            <!-- Schnellwahl Schrittweite Chips -->
+            <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; margin-bottom:0.4rem;">
+              <span style="font-size:0.72rem; color:var(--text-muted);">Häufige Schritte:</span>
+              <button type="button" class="btn btn-secondary btn-sm series-step-btn" data-step="0.1" style="padding:0.15rem 0.45rem; font-size:0.72rem;">0,1 mm</button>
+              <button type="button" class="btn btn-secondary btn-sm series-step-btn" data-step="0.2" style="padding:0.15rem 0.45rem; font-size:0.72rem;">0,2 mm</button>
+              <button type="button" class="btn btn-secondary btn-sm series-step-btn" data-step="0.5" style="padding:0.15rem 0.45rem; font-size:0.72rem;">0,5 mm</button>
+              <button type="button" class="btn btn-secondary btn-sm series-step-btn" data-step="1.0" style="padding:0.15rem 0.45rem; font-size:0.72rem;">1,0 mm</button>
+            </div>
+          </div>
+
+          <!-- Schaft & Längen-Optionen -->
+          <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:10px; padding:0.85rem;">
+            <strong style="color:var(--text-title); font-size:0.9rem; display:flex; align-items:center; gap:0.35rem; margin-bottom:0.6rem;">
+              <span>📐</span> Schaft & Gesamtlänge
+            </strong>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.6rem;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Schaftdurchmesser</label>
+                <select id="series-shank-mode" class="form-select" style="font-size:0.8rem; margin-bottom:0.3rem;">
+                  <option value="same">Gleich wie Schneid-Ø (Standard Bohrer)</option>
+                  <option value="fixed">Fester Schaftdurchmesser</option>
+                </select>
+                <input type="text" id="series-fixed-shank" class="form-input" placeholder="z.B. 6 oder 10" style="font-size:0.8rem; display:none;">
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Gesamtlänge</label>
+                <select id="series-length-mode" class="form-select" style="font-size:0.8rem; margin-bottom:0.3rem;">
+                  <option value="din338">DIN 338 Bohrerlänge berechnen</option>
+                  <option value="fixed">Feste Gesamtlänge</option>
+                  <option value="empty">Leer lassen</option>
+                </select>
+                <input type="text" id="series-fixed-length" class="form-input" placeholder="z.B. 75" style="font-size:0.8rem; display:none;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Stammdaten & Merkmale -->
+          <div style="background:var(--bg-surface-alt); border:1px solid var(--border); border-radius:10px; padding:0.85rem;">
+            <strong style="color:var(--text-title); font-size:0.9rem; display:flex; align-items:center; gap:0.35rem; margin-bottom:0.6rem;">
+              <span>⚙️</span> Eigenschaften aller Werkzeuge dieser Serie
+            </strong>
+            <div class="form-row" style="margin-bottom:0.5rem;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Kategorie</label>
+                <select id="series-category" class="form-select" style="font-size:0.8rem;">
+                  <option value="Bohrer">Bohrer</option>
+                  <option value="VHM-Bohrer">VHM-Bohrer</option>
+                  <option value="VHM-Fräser">VHM-Fräser</option>
+                  <option value="NC-Anbohrer">NC-Anbohrer</option>
+                  <option value="Zentrierbohrer">Zentrierbohrer</option>
+                  <option value="Fasenfräser">Fasenfräser</option>
+                  <option value="Schaftfräser">Schaftfräser</option>
+                  <option value="Gewindebohrer">Gewindebohrer</option>
+                  <option value="Reibahle">Reibahle</option>
+                  <option value="Senker">Senker</option>
+                  <option value="Sonstiges">Sonstiges</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Hersteller</label>
+                <input type="text" id="series-manufacturer" class="form-input" placeholder="z.B. DORMER" style="font-size:0.8rem;">
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom:0.5rem;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Schneidstoff</label>
+                <input type="text" id="series-material" class="form-input" placeholder="z.B. HSS-E oder VHM" style="font-size:0.8rem;">
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Beschichtung</label>
+                <input type="text" id="series-coating" class="form-input" placeholder="z.B. TIAIN" style="font-size:0.8rem;">
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom:0.5rem;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Lagerort / Schublade</label>
+                <input type="text" id="series-location" class="form-input" placeholder="z.B. A2" style="font-size:0.8rem;">
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Kühlung</label>
+                <select id="series-coolant" class="form-select" style="font-size:0.8rem;">
+                  <option value="Außenkühlung">Außenkühlung</option>
+                  <option value="Innenkühlung">Innenkühlung</option>
+                  <option value="Innen- & Außenkühlung">Innen- & Außenkühlung</option>
+                  <option value="Trocken">Trocken</option>
+                  <option value="Minimalmengenschmierung">MMS</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom:0.5rem;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Initialer Status</label>
+                <select id="series-status" class="form-select" style="font-size:0.8rem;">
+                  <option value="nicht verfügbar">nicht verfügbar</option>
+                  <option value="verfügbar">verfügbar</option>
+                  <option value="neu">neu</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.75rem;">Bestand / Stückzahl</label>
+                <input type="number" id="series-quantity" class="form-input" min="0" value="0" style="font-size:0.8rem;">
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="font-size:0.75rem;">Notizen / Schnittdaten (für alle Werkzeuge)</label>
+              <textarea id="series-notes" rows="2" class="form-textarea" placeholder="z.B. Schnittwerte..." style="font-size:0.75rem;"></textarea>
+            </div>
+            <input type="hidden" id="series-image-url" value="">
+            <input type="hidden" id="series-link" value="">
+            <input type="hidden" id="series-icon" value="🔩">
+          </div>
+
+          <!-- Live-Vorschau Box -->
+          <div style="background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.3); border-radius:10px; padding:0.85rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.4rem;">
+              <strong style="color:var(--text-title); font-size:0.88rem; display:flex; align-items:center; gap:0.35rem;">
+                <span>👁️</span> Vorschau der Werkzeugreihe:
+              </strong>
+              <span id="series-preview-badge" class="badge badge-info" style="font-size:0.8rem; font-weight:700;">0 Werkzeuge</span>
+            </div>
+            <div id="series-preview-list" style="font-size:0.75rem; color:var(--text-muted); line-height:1.4; word-break:break-word; max-height:80px; overflow-y:auto; background:rgba(0,0,0,0.15); padding:0.4rem; border-radius:6px; margin-bottom:0.5rem;">
+              Vorschau lädt...
+            </div>
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.78rem; color:var(--text-title);">
+              <input type="checkbox" id="series-update-existing" checked>
+              <span>Vorhandene Werkzeuge mit gleichem Namen aktualisieren statt Duplikate anlegen</span>
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.25rem;">
+            <button type="button" class="btn btn-secondary" id="btn-series-cancel">Abbrechen</button>
+            <button type="submit" class="btn btn-primary" id="btn-series-submit" style="display:inline-flex; align-items:center; gap:0.4rem;">
+              <span>⚡</span> <span id="btn-series-submit-text">Werkzeuge jetzt generieren</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -2690,7 +2891,9 @@
           (category === 'Zentrierbohrer' && t.category === 'Zentrierbohrer') ||
           (category === 'Fasenfräser' && t.category === 'Fasenfräser');
         return s && (status === 'all' || t.status === status) && catMatch;
-      }).sort(function(a, b) { return a.name.localeCompare(b.name); });
+      }).sort(function(a, b) {
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+      });
     }
 
     function esc(t) {
@@ -2954,6 +3157,8 @@
         labelBtn.style.display = 'inline-flex';
         const nfcWriteBtn = document.getElementById('btn-write-nfc');
         if (nfcWriteBtn) nfcWriteBtn.style.display = 'inline-flex';
+        const seriesBtn = document.getElementById('btn-series-from-current');
+        if (seriesBtn) seriesBtn.style.display = 'inline-flex';
 
         // Historie für dieses Werkzeug anzeigen
         const histSection = document.getElementById('tool-history-section');
@@ -2998,6 +3203,8 @@
         labelBtn.style.display = 'none';
         const nfcWriteBtn = document.getElementById('btn-write-nfc');
         if (nfcWriteBtn) nfcWriteBtn.style.display = 'none';
+        const seriesBtn = document.getElementById('btn-series-from-current');
+        if (seriesBtn) seriesBtn.style.display = 'none';
         const histSection = document.getElementById('tool-history-section');
         if (histSection) histSection.style.display = 'none';
       }
@@ -4251,6 +4458,445 @@
         }
       });
     }
+
+    // ==================== WERKZEUGREIHE / SERIEN-GENERATOR ====================
+    function getDin338DrillLength(d) {
+      if (d <= 3.3) return '65';
+      if (d <= 3.7) return '70';
+      if (d <= 4.2) return '75';
+      if (d <= 4.7) return '80';
+      if (d <= 5.3) return '86';
+      if (d <= 6.0) return '93';
+      if (d <= 6.7) return '101';
+      if (d <= 7.5) return '109';
+      if (d <= 8.5) return '117';
+      if (d <= 9.5) return '125';
+      if (d <= 10.6) return '133';
+      if (d <= 11.8) return '142';
+      if (d <= 13.2) return '151';
+      if (d <= 14.5) return '160';
+      if (d <= 15.5) return '169';
+      if (d <= 16.5) return '178';
+      if (d <= 17.5) return '184';
+      if (d <= 18.5) return '191';
+      if (d <= 19.5) return '198';
+      return '205';
+    }
+
+    function openSeriesModal(presetTool) {
+      const modal = document.getElementById('series-modal');
+      if (!modal) return;
+
+      // Populate template dropdown
+      const select = document.getElementById('series-template-select');
+      if (select) {
+        select.innerHTML = '<option value="">-- Manuell ausfüllen --</option>';
+        const sortedTools = tools.slice().sort(function(a, b) {
+          return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        sortedTools.forEach(function(t) {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = t.name + (t.diameter ? ' (Ø' + t.diameter + ' mm)' : '');
+          select.appendChild(opt);
+        });
+      }
+
+      // If presetTool or find good default
+      let targetTemplate = presetTool || null;
+      if (!targetTemplate && tools.length) {
+        // Find ADX or first Bohrer
+        targetTemplate = tools.find(function(t) { return t.name.startsWith('ADX'); }) ||
+                         tools.find(function(t) { return t.category === 'Bohrer' || t.category === 'VHM-Bohrer'; }) ||
+                         tools[0];
+      }
+
+      if (targetTemplate) {
+        if (select) select.value = targetTemplate.id;
+        applySeriesTemplate(targetTemplate);
+      } else {
+        updateSeriesPreview();
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeSeriesModal() {
+      const modal = document.getElementById('series-modal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function parseUserDecimal(val, defaultVal) {
+      if (val === undefined || val === null) return defaultVal;
+      const s = String(val).trim().replace(/\s+/g, '').replace(',', '.');
+      if (!s) return defaultVal;
+      const n = parseFloat(s);
+      return isNaN(n) ? defaultVal : n;
+    }
+
+    function applySeriesTemplate(t) {
+      if (!t) return;
+
+      // Auto-extract pattern if name contains diameter
+      const nameInput = document.getElementById('series-name-pattern');
+      if (nameInput) {
+        if (t.diameter && t.name.includes(t.diameter)) {
+          nameInput.value = t.name.replace(t.diameter, '{D}');
+        } else if (/D=\d+([.,]\d+)?/i.test(t.name)) {
+          nameInput.value = t.name.replace(/D=\d+([.,]\d+)?/i, 'D={D}');
+        } else if (/Ø\s*\d+([.,]\d+)?/i.test(t.name)) {
+          nameInput.value = t.name.replace(/Ø\s*\d+([.,]\d+)?/i, 'Ø{D}');
+        } else {
+          nameInput.value = t.name + ' Ø{D}mm';
+        }
+      }
+
+      const catEl = document.getElementById('series-category');
+      if (catEl && t.category) catEl.value = t.category;
+
+      const mfrEl = document.getElementById('series-manufacturer');
+      if (mfrEl) mfrEl.value = t.manufacturer || '';
+
+      const matEl = document.getElementById('series-material');
+      if (matEl) matEl.value = t.material || '';
+
+      const coatEl = document.getElementById('series-coating');
+      if (coatEl) coatEl.value = t.coating || '';
+
+      const locEl = document.getElementById('series-location');
+      if (locEl) locEl.value = t.location || '';
+
+      const coolEl = document.getElementById('series-coolant');
+      if (coolEl && t.coolant) coolEl.value = t.coolant;
+
+      const statEl = document.getElementById('series-status');
+      if (statEl && t.status) statEl.value = t.status;
+
+      const qtyEl = document.getElementById('series-quantity');
+      if (qtyEl) qtyEl.value = (t.status === 'nicht verfügbar') ? '0' : (t.quantity !== undefined ? t.quantity : '0');
+
+      const notesEl = document.getElementById('series-notes');
+      if (notesEl) notesEl.value = t.notes || '';
+
+      const imgUrlEl = document.getElementById('series-image-url');
+      if (imgUrlEl) imgUrlEl.value = t.imageUrl || '';
+
+      const linkEl = document.getElementById('series-link');
+      if (linkEl) linkEl.value = t.link || '';
+
+      const iconEl = document.getElementById('series-icon');
+      if (iconEl) iconEl.value = t.icon || defaultIconForCategory(t.category);
+
+      // Start/End diameter sensible defaults
+      if (t.diameter) {
+        const curD = parseUserDecimal(t.diameter, 0);
+        if (curD > 0) {
+          const startEl = document.getElementById('series-start-d');
+          if (startEl) startEl.value = String(t.diameter).trim();
+        }
+      }
+
+      updateSeriesPreview();
+    }
+
+    function calculateSeriesItems() {
+      const patternInput = document.getElementById('series-name-pattern');
+      const pattern = (patternInput ? patternInput.value : 'ADX D={D}mm').trim();
+      const startEl = document.getElementById('series-start-d');
+      const endEl = document.getElementById('series-end-d');
+      const stepEl = document.getElementById('series-step-d');
+
+      const startRaw = startEl ? startEl.value : '3.1';
+      const endRaw = endEl ? endEl.value : '20.0';
+      const stepRaw = stepEl ? stepEl.value : '0.1';
+
+      const startD = parseUserDecimal(startRaw, NaN);
+      const endD = parseUserDecimal(endRaw, NaN);
+      const stepD = parseUserDecimal(stepRaw, NaN);
+
+      if (isNaN(startD) || startD <= 0) {
+        return { error: 'Ungültiger Startdurchmesser (z.B. 3.1 oder 3,1 mm)', items: [] };
+      }
+      if (isNaN(endD) || endD <= 0) {
+        return { error: 'Ungültiger Enddurchmesser (z.B. 20.0 oder 20,0 mm)', items: [] };
+      }
+      if (isNaN(stepD) || stepD <= 0) {
+        return { error: 'Ungültige Schrittweite (z.B. 0.1 oder 0,1 mm)', items: [] };
+      }
+      if (startD > endD) {
+        return { error: 'Startdurchmesser darf nicht größer als Enddurchmesser sein.', items: [] };
+      }
+
+      // Precision determination: support both comma and dot
+      const stepClean = String(stepRaw).trim().replace(',', '.');
+      let precision = 1;
+      if (stepClean.includes('.')) {
+        precision = Math.max(1, Math.min(3, stepClean.split('.')[1].length));
+      } else if (stepD < 1) {
+        precision = 2;
+      }
+      const startClean = String(startRaw).trim().replace(',', '.');
+      if (startClean.includes('.')) {
+        precision = Math.max(precision, Math.min(3, startClean.split('.')[1].length));
+      }
+
+      const items = [];
+      const eps = stepD / 10000;
+      for (let d = startD; d <= endD + eps; d = Math.round((d + stepD) * 10000) / 10000) {
+        const dStr = d.toFixed(precision);
+        const name = pattern.includes('{D}') ? pattern.replace(/\{D\}/g, dStr) : (pattern + ' ' + dStr);
+        items.push({ d: Math.round(d * 10000) / 10000, dStr: dStr, name: name });
+        if (items.length > 500) {
+          return { error: 'Zu viele Werkzeuge (max. 500 pro Serie). Bitte Schrittweite anpassen.', items: [] };
+        }
+      }
+
+      if (!items.length) {
+        return { error: 'Keine Werkzeuge im angegebenen Bereich.', items: [] };
+      }
+
+      return { error: null, items: items, precision: precision };
+    }
+
+    function updateSeriesPreview() {
+      const badge = document.getElementById('series-preview-badge');
+      const list = document.getElementById('series-preview-list');
+      const submitText = document.getElementById('btn-series-submit-text');
+      const submitBtn = document.getElementById('btn-series-submit');
+
+      const calc = calculateSeriesItems();
+      if (calc.error) {
+        if (badge) badge.textContent = 'Fehler';
+        if (list) list.innerHTML = '<span style="color:var(--danger);">' + esc(calc.error) + '</span>';
+        if (submitBtn) submitBtn.disabled = true;
+        return;
+      }
+
+      if (submitBtn) submitBtn.disabled = false;
+      const count = calc.items.length;
+      if (badge) badge.textContent = count + ' Werkzeug' + (count === 1 ? '' : 'e');
+      if (submitText) submitText.textContent = count + ' Werkzeuge jetzt anlegen';
+
+      if (list) {
+        if (count === 0) {
+          list.innerHTML = 'Keine Werkzeuge';
+          return;
+        }
+        let previewHtml = '';
+        if (count <= 6) {
+          previewHtml = calc.items.map(function(it) {
+            return '<span class="tag" style="margin:2px 3px; font-size:0.72rem;">' + esc(it.name) + ' (Ø' + it.dStr + ' mm)</span>';
+          }).join('');
+        } else {
+          const firstThree = calc.items.slice(0, 3).map(function(it) {
+            return '<span class="tag" style="margin:2px 3px; font-size:0.72rem;">' + esc(it.name) + ' (Ø' + it.dStr + ' mm)</span>';
+          }).join('');
+          const lastThree = calc.items.slice(-3).map(function(it) {
+            return '<span class="tag" style="margin:2px 3px; font-size:0.72rem;">' + esc(it.name) + ' (Ø' + it.dStr + ' mm)</span>';
+          }).join('');
+          previewHtml = firstThree + ' <span style="color:var(--text-muted); padding:0 4px;">…</span> ' + lastThree;
+        }
+        list.innerHTML = previewHtml;
+      }
+    }
+
+    function executeSeriesGeneration(e) {
+      if (e) e.preventDefault();
+
+      const calc = calculateSeriesItems();
+      if (calc.error || !calc.items.length) {
+        showToast('❌ ' + (calc.error || 'Keine Werkzeuge zum Generieren'), 'warning');
+        return;
+      }
+
+      const category = document.getElementById('series-category').value;
+      const manufacturer = document.getElementById('series-manufacturer').value.trim();
+      const material = document.getElementById('series-material').value.trim();
+      const coating = document.getElementById('series-coating').value.trim();
+      const location = document.getElementById('series-location').value.trim();
+      const coolant = document.getElementById('series-coolant').value;
+      const status = document.getElementById('series-status').value;
+      const quantity = document.getElementById('series-quantity').value;
+      const notes = document.getElementById('series-notes').value.trim();
+      const imageUrl = document.getElementById('series-image-url').value;
+      const link = document.getElementById('series-link').value;
+      const icon = document.getElementById('series-icon').value || defaultIconForCategory(category);
+
+      const shankMode = document.getElementById('series-shank-mode').value;
+      const fixedShank = document.getElementById('series-fixed-shank').value.trim();
+      const lengthMode = document.getElementById('series-length-mode').value;
+      const fixedLength = document.getElementById('series-fixed-length').value.trim();
+
+      const updateExisting = document.getElementById('series-update-existing').checked;
+
+      // Existing tools map by name for fast lookup
+      const existingByName = new Map();
+      tools.forEach(function(t) {
+        existingByName.set(t.name.trim(), t);
+      });
+
+      let addedCount = 0;
+      let updatedCount = 0;
+      const now = new Date().toISOString();
+      const operator = currentUser || 'Mitarbeiter';
+
+      calc.items.forEach(function(item) {
+        const dStr = item.dStr;
+        const name = item.name.trim();
+
+        // Calculate geometry
+        const cleanFixedShank = (fixedShank || '').replace(',', '.');
+        const cleanFixedLength = (fixedLength || '').replace(',', '.');
+        const shank = (shankMode === 'same') ? dStr : (cleanFixedShank || dStr);
+        let length = '';
+        if (lengthMode === 'din338') {
+          length = getDin338DrillLength(item.d);
+        } else if (lengthMode === 'fixed') {
+          length = cleanFixedLength;
+        }
+
+        const existing = updateExisting ? existingByName.get(name) : null;
+        if (existing) {
+          // Update existing tool
+          existing.diameter = dStr;
+          existing.shank = shank;
+          if (length) existing.length = length;
+          if (category) existing.category = category;
+          if (manufacturer) existing.manufacturer = manufacturer;
+          if (material) existing.material = material;
+          if (coating) existing.coating = coating;
+          if (location) existing.location = location;
+          if (coolant) existing.coolant = coolant;
+          if (status) existing.status = status;
+          if (quantity !== '') existing.quantity = quantity;
+          if (notes) existing.notes = notes;
+          if (imageUrl) existing.imageUrl = imageUrl;
+          if (link) existing.link = link;
+          if (icon) existing.icon = icon;
+          existing.updatedAt = now;
+          existing.updatedBy = operator;
+          existing.lastChangeSummary = 'Serie aktualisiert (' + operator + ')';
+          updatedCount++;
+        } else {
+          // Create new tool
+          const id = 'ser_' + dStr.replace('.', '_') + '_' + Math.random().toString(36).substring(2, 8);
+          const newTool = {
+            id: id,
+            name: name,
+            category: category || 'Bohrer',
+            status: status || 'nicht verfügbar',
+            icon: icon || '🔩',
+            image: '',
+            imageUrl: imageUrl || '',
+            link: link || '',
+            diameter: dStr,
+            shank: shank,
+            length: length,
+            flutes: '',
+            coating: coating || '',
+            material: material || '',
+            manufacturer: manufacturer || '',
+            sku: '',
+            magazine: '',
+            holder: '',
+            zLength: '',
+            coolant: coolant || 'Außenkühlung',
+            machine: '',
+            location: location || '',
+            notes: notes || '',
+            quantity: (status === 'nicht verfügbar') ? '0' : (quantity !== '' ? quantity : '0'),
+            createdAt: now,
+            createdBy: operator,
+            updatedAt: now,
+            updatedBy: operator,
+            lastChangeSummary: 'Als Serie generiert von ' + operator,
+            history: [{
+              timestamp: now,
+              userName: operator,
+              details: 'Serie erstellt: ' + name + ' (Ø' + dStr + ' mm)',
+              changes: ['Serie generiert']
+            }]
+          };
+          tools.push(newTool);
+          existingByName.set(name, newTool);
+          addedCount++;
+        }
+      });
+
+      saveTools();
+      renderStats();
+      renderGrid();
+
+      // Log to history
+      const logDetail = (addedCount > 0 ? (addedCount + ' neu angelegt') : '') +
+                        (addedCount > 0 && updatedCount > 0 ? ', ' : '') +
+                        (updatedCount > 0 ? (updatedCount + ' aktualisiert') : '');
+      recordAuditLog(
+        'Serie generiert',
+        calc.items[0].name + ' bis ' + calc.items[calc.items.length - 1].name,
+        'SERIE',
+        'Werkzeugreihe generiert: Ø' + calc.items[0].dStr + ' bis Ø' + calc.items[calc.items.length - 1].dStr + ' mm (' + logDetail + ')',
+        ['Serie: ' + calc.items.length + ' Werkzeuge (' + logDetail + ')']
+      );
+
+      showToast('✅ ' + calc.items.length + ' Werkzeuge verarbeitet (' + addedCount + ' neu, ' + updatedCount + ' aktualisiert)', 'success');
+      closeSeriesModal();
+    }
+
+    // Series Event Listeners
+    safeOn('btn-open-series-generator', 'click', function() { openSeriesModal(); });
+    safeOn('series-modal-close', 'click', closeSeriesModal);
+    safeOn('series-backdrop', 'click', closeSeriesModal);
+    safeOn('btn-series-cancel', 'click', closeSeriesModal);
+    safeOn('series-form', 'submit', executeSeriesGeneration);
+
+    safeOn('series-template-select', 'change', function(e) {
+      const selectedId = e.target.value;
+      if (!selectedId) return;
+      const target = tools.find(function(t) { return t.id === selectedId; });
+      if (target) applySeriesTemplate(target);
+    });
+
+    ['input', 'change', 'keyup', 'paste'].forEach(function(evt) {
+      safeOn('series-name-pattern', evt, updateSeriesPreview);
+      safeOn('series-start-d', evt, updateSeriesPreview);
+      safeOn('series-end-d', evt, updateSeriesPreview);
+      safeOn('series-step-d', evt, updateSeriesPreview);
+      safeOn('series-fixed-shank', evt, updateSeriesPreview);
+      safeOn('series-fixed-length', evt, updateSeriesPreview);
+    });
+
+    document.querySelectorAll('.series-step-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const stepVal = this.getAttribute('data-step');
+        const stepInput = document.getElementById('series-step-d');
+        if (stepInput && stepVal) {
+          stepInput.value = stepVal;
+          updateSeriesPreview();
+        }
+      });
+    });
+
+    safeOn('series-shank-mode', 'change', function(e) {
+      const fixedInput = document.getElementById('series-fixed-shank');
+      if (fixedInput) fixedInput.style.display = (e.target.value === 'fixed') ? 'block' : 'none';
+      updateSeriesPreview();
+    });
+
+    safeOn('series-length-mode', 'change', function(e) {
+      const fixedInput = document.getElementById('series-fixed-length');
+      if (fixedInput) fixedInput.style.display = (e.target.value === 'fixed') ? 'block' : 'none';
+      updateSeriesPreview();
+    });
+
+    safeOn('btn-series-from-current', 'click', function() {
+      if (!currentEditId) return;
+      const target = tools.find(function(t) { return t.id === currentEditId; });
+      if (target) {
+        closeModal();
+        openSeriesModal(target);
+      }
+    });
 
     // ==================== KI-ZEICHNUNGSANALYSE & WERKZEUG-MATCHER ====================
     let currentAiFile = null;
